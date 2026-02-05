@@ -5,3 +5,4 @@ __pycache__/
 downloads/
 qr_login.png
 venv/
+.DS_Store
