@@ -1,0 +1,4 @@
+telethon
+qrcode
+pillow
+python-dotenv
