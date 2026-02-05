@@ -1,7 +1,7 @@
 import asyncio
 import os
 import qrcode
-from telethon import TelegramClient, events, errors
+from telethon import TelegramClient, events, errors, utils
 from telethon.tl.types import Message
 from config import Config
 
@@ -15,6 +15,9 @@ class TelegramMediaManager:
         # State for login flow
         self.login_event = asyncio.Event()
         self.password_future = None
+        
+        # State for commands
+        self.waiting_for_channel_link = False
 
     async def start(self):
         print("Starting Bot...")
@@ -52,6 +55,14 @@ class TelegramMediaManager:
             asyncio.create_task(self.perform_qr_login(event.chat_id))
             return
 
+        if text == '/download_channel' or text == '/download_chanel':
+            if not await self.user_client.is_user_authorized():
+                await event.reply("User client not logged in. Cannot download channels.")
+                return
+            self.waiting_for_channel_link = True
+            await event.reply("Please send a link to any message in the channel you want to download (e.g., https://t.me/channel/123).")
+            return
+
         if text.startswith('/setpath'):
             path = text.split(' ', 1)[1] if len(text.split()) > 1 else "downloads"
             self.download_path = path
@@ -59,7 +70,17 @@ class TelegramMediaManager:
             return
         
         if 't.me/' in text:
-            await self.handle_link(text, event)
+            if self.waiting_for_channel_link:
+                self.waiting_for_channel_link = False
+                await self.start_channel_download(text, event)
+            else:
+                await self.handle_link(text, event)
+            return
+        
+        # If waiting for link but got something else (and not a command handled above)
+        if self.waiting_for_channel_link and not text.startswith('/'):
+            self.waiting_for_channel_link = False
+            await event.reply("Invalid link or operation cancelled. Please send /download_channel again.")
             return
 
         # If it's a password for 2FA
@@ -107,6 +128,61 @@ class TelegramMediaManager:
             traceback.print_exc() # Print full error to console
             await self.bot.send_message(chat_id, f"Login failed: {str(e)}")
 
+    async def start_channel_download(self, link, event):
+        await event.reply(f"Analyzing channel from link: {link}...")
+        try:
+            # Clean link
+            link = link.split('?')[0]
+            parts = link.rstrip('/').split('/')
+            
+            if len(parts) < 2:
+                raise ValueError("Invalid link format")
+
+            entity = parts[-2]
+            
+            # Resolve entity
+            if entity.isdigit():
+                 try:
+                     chat_id = int(f"-100{entity}")
+                     entity = chat_id
+                 except:
+                     pass
+            
+            # Get Chat object to get title
+            chat = await self.user_client.get_entity(entity)
+            chat_title = getattr(chat, 'title', str(entity)).replace('/', '_')
+            
+            # Create specific folder
+            channel_path = os.path.join(self.download_path, chat_title)
+            os.makedirs(channel_path, exist_ok=True)
+            
+            status_msg = await event.reply(f"Started downloading channel: {chat_title}\nSaving to: {channel_path}\nThis may take a while...")
+            
+            count = 0
+            # Iterate over all messages
+            # Note: Albums (grouped media) are returned as separate messages with the same grouped_id.
+            # We simply iterate and download all of them.
+            async for message in self.user_client.iter_messages(chat):
+                if message.media:
+                    try:
+                        # Optional: Check if we already have this file to skip
+                        # Telethon's download_media handles unique filenames usually, but doesn't skip if exists by default unless we check.
+                        # For simplicity, we just download.
+                        
+                        await self.user_client.download_media(message, file=channel_path)
+                        count += 1
+                        if count % 10 == 0:
+                            await status_msg.edit(f"Downloading {chat_title}...\nDownloaded: {count} files so far.")
+                    except Exception as e:
+                        print(f"Error downloading message {message.id}: {e}")
+            
+            await status_msg.edit(f"✅ Download complete for {chat_title}!\nTotal files: {count}")
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            await event.reply(f"Error starting channel download: {str(e)}")
+
     async def handle_link(self, link, event):
         if not await self.user_client.is_user_authorized():
             await event.reply("User client not logged in. Cannot process links.")
@@ -140,6 +216,43 @@ class TelegramMediaManager:
                      pass
             
             message = await self.user_client.get_messages(entity, ids=msg_id)
+            
+            # Check for grouped media (albums)
+            if message and message.grouped_id:
+                # Get all messages in the group
+                # We can't easily get "all messages with this grouped_id" directly without searching around
+                # But typically they are adjacent. Telethon doesn't have a direct "get_album" method.
+                # A robust way is to fetch surrounding messages.
+                # However, a simpler heuristic: fetch messages around this ID.
+                # Or just iterate messages in the chat with a limit and filter by grouped_id? No, that's inefficient for old messages.
+                
+                # Best approach for single link:
+                # 1. We have one message.
+                # 2. Fetch a few messages before and after (e.g., 10)
+                # 3. Filter by the same grouped_id.
+                
+                surrounding = await self.user_client.get_messages(entity, min_id=msg_id-10, max_id=msg_id+10)
+                # Note: get_messages with min/max might return empty if not found.
+                # Actually, simply getting a range of IDs is safer.
+                ids_to_check = list(range(msg_id - 9, msg_id + 10))
+                candidates = await self.user_client.get_messages(entity, ids=ids_to_check)
+                
+                album = [m for m in candidates if m and m.grouped_id == message.grouped_id]
+                
+                # Ensure the original message is included (it should be in candidates)
+                if not any(m.id == message.id for m in album):
+                     album.append(message)
+                
+                # Deduplicate by ID
+                album_unique = {m.id: m for m in album}.values()
+                
+                if album_unique:
+                    await event.reply(f"Found album with {len(album_unique)} items. Downloading all...")
+                    for m in album_unique:
+                        if m.media:
+                            await self.download_media(m, event, use_user_client=True)
+                    return
+
             if message and message.media:
                 await self.download_media(message, event, use_user_client=True)
             else:
@@ -147,6 +260,38 @@ class TelegramMediaManager:
                 
         except Exception as e:
             await event.reply(f"Error processing link: {str(e)}")
+
+    async def _safe_download(self, client, message, folder):
+        """
+        Download media with custom filename generation and cleanup on failure.
+        """
+        try:
+            # Generate filename
+            filename = message.file.name
+            if not filename:
+                ext = utils.get_extension(message.media) or ''
+                filename = f"media_{message.id}{ext}"
+            
+            # Ensure unique filename
+            filepath = os.path.join(folder, filename)
+            base, ext = os.path.splitext(filename)
+            i = 1
+            while os.path.exists(filepath):
+                filepath = os.path.join(folder, f"{base}_{i}{ext}")
+                i += 1
+                
+            # Download
+            await client.download_media(message, file=filepath)
+            return filepath
+            
+        except Exception as e:
+            # Cleanup partial file
+            if 'filepath' in locals() and os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                except:
+                    pass
+            raise e
 
     async def download_media(self, message, event, use_user_client=False):
         status_msg = await event.reply("Downloading...")
@@ -156,8 +301,8 @@ class TelegramMediaManager:
             
             client = self.user_client if use_user_client else self.bot
             
-            # Download
-            out = await client.download_media(message, file=path)
+            # Download using safe method
+            out = await self._safe_download(client, message, path)
             
             await status_msg.edit(f"Saved to: {out}")
         except Exception as e:
