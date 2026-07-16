@@ -1,7 +1,15 @@
 import asyncio
+
 from manager import TelegramMediaManager
 
-if __name__ == '__main__':
+
+def main():
     manager = TelegramMediaManager()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(manager.start())
+    try:
+        asyncio.run(manager.start())
+    except KeyboardInterrupt:
+        print("\nShutting down (Ctrl+C).")
+
+
+if __name__ == '__main__':
+    main()
