@@ -2,6 +2,10 @@ __pycache__/
 *.session
 *.session-journal
 .env
+state.db
+state.db-wal
+state.db-shm
+*.part
 downloads/
 qr_login.png
 venv/
