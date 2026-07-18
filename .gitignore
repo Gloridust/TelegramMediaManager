@@ -10,3 +10,4 @@ downloads/
 qr_login.png
 venv/
 .DS_Store
+/.sync_temp_dir
