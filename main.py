@@ -1,15 +1,14 @@
-import asyncio
+"""Entry point. Launches the web panel (which owns the download engine and,
+optionally, the Telegram bot).
 
-from manager import TelegramMediaManager
+    python main.py
 
+Configuration is done entirely through the web panel on first run — no .env
+required. Environment variables only wire up infrastructure (data dir, port);
+see .env.example.
+"""
 
-def main():
-    manager = TelegramMediaManager()
-    try:
-        asyncio.run(manager.start())
-    except KeyboardInterrupt:
-        print("\nShutting down (Ctrl+C).")
+from app.main import run
 
-
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    run()

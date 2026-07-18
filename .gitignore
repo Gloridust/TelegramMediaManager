@@ -1,13 +1,27 @@
+# Python
 __pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+env/
+
+# Runtime data (all state lives here in v2: db, sessions, mihomo config, downloads)
+data/
+downloads/
 *.session
 *.session-journal
-.env
+*.part
 state.db
 state.db-wal
 state.db-shm
-*.part
-downloads/
 qr_login.png
-venv/
+
+# Secrets / local config
+.env
+
+# Editor / OS
 .DS_Store
+.idea/
+.vscode/
 /.sync_temp_dir

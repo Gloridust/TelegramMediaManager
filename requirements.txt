@@ -1,4 +1,9 @@
-telethon
-qrcode
-pillow
-python-dotenv
+telethon>=1.35,<2
+qrcode>=7.4
+pillow>=10.0
+python-socks[asyncio]>=2.4
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+httpx>=0.27
+PyYAML>=6.0
