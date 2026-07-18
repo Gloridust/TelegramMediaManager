@@ -11,6 +11,9 @@ keywords = ["telegram", "downloader", "self-hosted", "docker", "mihomo", "nas"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+# Put the repo root on sys.path so `import app` works no matter how pytest is
+# invoked (plain `pytest` doesn't add CWD the way `python -m pytest` does).
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 110
