@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
 from app.config import Keys
+from app.core.i18n import tr
 from app.core.services import Services
 from app.api.deps import current_user, get_services
 
@@ -37,18 +38,18 @@ async def set_credentials(body: CredentialsBody, services: Services = Depends(ge
     try:
         await services.reconnect_user()
     except Exception as e:
-        raise HTTPException(400, f"凭据已保存，但连接失败：{e}")
+        raise HTTPException(400, await tr(services.store, "creds_saved_connect_failed", e=e))
     return {"ok": True, "authorized": await services.tg.is_authorized()}
 
 
 @router.post("/login/start")
 async def login_start(services: Services = Depends(get_services)):
     if not await services.tg.credentials_ready():
-        raise HTTPException(400, "请先填写 API ID / API Hash")
+        raise HTTPException(400, await tr(services.store, "need_api_creds"))
     try:
         return await services.tg.start_login()
     except Exception as e:
-        raise HTTPException(400, f"无法开始登录：{e}")
+        raise HTTPException(400, await tr(services.store, "login_start_failed", e=e))
 
 
 @router.get("/login/status")
@@ -65,7 +66,7 @@ async def login_status(services: Services = Depends(get_services)):
 async def login_qr(services: Services = Depends(get_services)):
     png = services.tg.qr_png()
     if not png:
-        raise HTTPException(404, "当前没有可用的二维码")
+        raise HTTPException(404, await tr(services.store, "no_qr"))
     return Response(content=png, media_type="image/png")
 
 
@@ -73,7 +74,7 @@ async def login_qr(services: Services = Depends(get_services)):
 async def login_password(body: PasswordBody, services: Services = Depends(get_services)):
     ok = await services.tg.submit_password(body.password)
     if not ok:
-        raise HTTPException(400, "当前不需要密码或登录流程未在等待")
+        raise HTTPException(400, await tr(services.store, "no_password_pending"))
     return {"ok": True}
 
 

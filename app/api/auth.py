@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
 from app.config import Keys, WebConfig
+from app.core.i18n import SUPPORTED, tr
 from app.core.security import hash_password, new_token, verify_password
 from app.core.services import Services
 from app.api.deps import (clear_session_cookie, current_user, get_services,
@@ -17,6 +18,7 @@ class SetupBody(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     api_id: int | None = None
     api_hash: str | None = None
+    lang: str | None = None
 
 
 class LoginBody(BaseModel):
@@ -52,7 +54,9 @@ async def auth_status(request: Request, services: Services = Depends(get_service
 async def setup(body: SetupBody, response: Response, services: Services = Depends(get_services)):
     """Create the admin account on first run. Refuses once one exists."""
     if await services.store.has_admin():
-        raise HTTPException(status.HTTP_409_CONFLICT, "已完成初始化，无法重复设置")
+        raise HTTPException(status.HTTP_409_CONFLICT, await tr(services.store, "already_setup"))
+    if body.lang in SUPPORTED:
+        await services.store.set_setting(Keys.UI_LANG, body.lang)
     user_id = await services.store.create_user(body.username, hash_password(body.password))
 
     if body.api_id and body.api_hash:
@@ -75,12 +79,12 @@ async def login(body: LoginBody, request: Request, response: Response,
                 services: Services = Depends(get_services)):
     ip = _client_ip(request)
     if not throttle.check(ip):
-        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "尝试过于频繁，请稍后再试")
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, await tr(services.store, "too_many_attempts"))
 
     user = await services.store.get_user(body.username)
     if not user or not verify_password(body.password, user["password_hash"]):
         throttle.record(ip)
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "用户名或密码错误")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, await tr(services.store, "bad_credentials"))
 
     throttle.reset(ip)
     token = new_token()
@@ -109,7 +113,7 @@ async def me(user=Depends(current_user)):
 async def change_password(body: PasswordBody, services: Services = Depends(get_services),
                           user=Depends(current_user)):
     if not verify_password(body.old_password, user["password_hash"]):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "当前密码不正确")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, await tr(services.store, "wrong_current_password"))
     await services.store.set_password(user["id"], hash_password(body.new_password))
     # Invalidate every session so other devices must re-authenticate.
     await services.store.delete_user_sessions(user["id"])

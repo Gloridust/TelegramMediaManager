@@ -50,6 +50,8 @@ export const api = {
   setCurrent: (b) => api.post("/api/files/set-current", b),
   setRoot: (b) => api.post("/api/files/set-root", b),
 
+  setLanguage: (lang) => api.post("/api/settings/language", { lang }),
+
   settings: () => api.get("/api/settings"),
   setProxy: (b) => api.post("/api/settings/proxy", b),
   setSubscription: (b) => api.post("/api/settings/subscription", b),

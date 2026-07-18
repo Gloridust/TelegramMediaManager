@@ -63,3 +63,20 @@ def test_login_after_logout(client):
     client.post("/api/auth/logout")
     assert client.post("/api/auth/login",
                        json={"username": "admin", "password": "nope"}).status_code == 401
+
+
+def test_backend_i18n(client):
+    # Server-generated messages follow the stored language.
+    client.post("/api/auth/login", json={"username": "admin", "password": "supersecret1"})
+
+    client.post("/api/settings/language", json={"lang": "zh"})
+    r = client.post("/api/downloads/link", json={"link": "https://t.me/x/1"}).json()
+    assert r["ok"] is False and r["error"] == "用户端尚未登录", r
+
+    client.post("/api/settings/language", json={"lang": "en"})
+    r = client.post("/api/downloads/link", json={"link": "https://t.me/x/1"}).json()
+    assert r["ok"] is False and r["error"] == "Telegram user client is not logged in", r
+
+    # An unsupported language is rejected.
+    assert client.post("/api/settings/language", json={"lang": "fr"}).json()["ok"] is False
+    client.post("/api/auth/logout")

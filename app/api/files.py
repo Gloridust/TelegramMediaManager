@@ -9,6 +9,7 @@ import os
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from app.core.i18n import tr
 from app.core.services import Services
 from app.api.deps import current_user, get_services
 
@@ -54,7 +55,7 @@ async def mkdir(body: MkdirBody, services: Services = Depends(get_services)):
     engine = services.engine
     path = engine.make_dir(body.parent, body.name)
     if not path:
-        raise HTTPException(400, "无效的文件夹名或非法路径")
+        raise HTTPException(400, await tr(services.store, "invalid_folder"))
     await engine.set_current_dir(path)
     target, names = engine.list_dir(path)
     return _view(engine, target, names)
@@ -64,7 +65,7 @@ async def mkdir(body: MkdirBody, services: Services = Depends(get_services)):
 async def set_current(body: PathBody, services: Services = Depends(get_services)):
     engine = services.engine
     if not await engine.set_current_dir(body.path):
-        raise HTTPException(400, "路径无效或超出工作根目录")
+        raise HTTPException(400, await tr(services.store, "invalid_path"))
     return {"ok": True, "current_rel": engine._rel(engine.current_dir)}
 
 
@@ -74,6 +75,6 @@ async def set_root(body: RootBody, services: Services = Depends(get_services)):
     try:
         await engine.set_root(body.path)
     except OSError as e:
-        raise HTTPException(400, f"无效路径：{e}")
+        raise HTTPException(400, await tr(services.store, "invalid_path_detail", e=e))
     pending = await services.store.pending_jobs()
     return {"ok": True, "root": engine.root_path, "pending": len(pending)}

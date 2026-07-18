@@ -80,6 +80,7 @@ class Keys:
     CURRENT_DIR = "current_dir"
     MAX_CONCURRENT = "max_concurrent"
     FOLDERS_RELATIVE = "folders_relative"  # migration flag
+    UI_LANG = "ui_lang"  # 'zh' | 'en' — language for server-generated messages
 
     PROXY_MODE = "proxy_mode"        # 'off' | 'mihomo' | 'external'
     PROXY_TYPE = "proxy_type"        # 'socks5' | 'http'

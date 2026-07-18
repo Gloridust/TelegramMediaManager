@@ -15,6 +15,7 @@ import qrcode
 from telethon import TelegramClient, errors
 
 from app.config import Keys, MihomoConfig, Paths
+from app.core.i18n import tr
 
 
 def _proxy_tuple(mode, ptype, host, port):
@@ -182,17 +183,17 @@ class TelegramManager:
                         password = await asyncio.wait_for(self._password_future, timeout=300)
                     except asyncio.TimeoutError:
                         self._login_state = "error"
-                        self._login_error = "两步验证密码输入超时"
+                        self._login_error = await tr(self.store, "tfa_timeout")
                         return
                     try:
                         await self.user_client.sign_in(password=password)
                         self._login_state = "success"
                     except Exception as e:
                         self._login_state = "error"
-                        self._login_error = f"两步验证失败：{e}"
+                        self._login_error = await tr(self.store, "tfa_failed", e=e)
                     return
             self._login_state = "error"
-            self._login_error = "二维码已过期，请重试"
+            self._login_error = await tr(self.store, "qr_expired")
         except asyncio.CancelledError:
             raise
         except Exception as e:

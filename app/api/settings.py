@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.config import Keys, MihomoConfig
+from app.core.i18n import SUPPORTED, tr
 from app.core.services import Services
 from app.api.deps import current_user, get_services
 
@@ -29,6 +30,19 @@ class BotBody(BaseModel):
     enabled: bool
     token: str | None = None
     admin_id: int | None = None
+
+
+class LanguageBody(BaseModel):
+    lang: str
+
+
+@router.post("/language")
+async def set_language(body: LanguageBody, services: Services = Depends(get_services)):
+    """Persist the language used for server-generated messages."""
+    if body.lang not in SUPPORTED:
+        return {"ok": False}
+    await services.store.set_setting(Keys.UI_LANG, body.lang)
+    return {"ok": True, "lang": body.lang}
 
 
 @router.get("")
@@ -60,9 +74,9 @@ async def get_settings(services: Services = Depends(get_services)):
 async def _reconnect_note(services):
     try:
         await services.reconnect_user()
-        return "代理已应用，用户端已按新设置重连。"
+        return await tr(services.store, "proxy_applied")
     except Exception as e:
-        return f"设置已保存，但重连失败：{e}"
+        return await tr(services.store, "saved_reconnect_failed", e=e)
 
 
 @router.post("/proxy")
@@ -124,7 +138,7 @@ async def set_bot(body: BotBody, services: Services = Depends(get_services)):
         await services.stop_bot()  # restart cleanly to pick up new token/admin
         await services.maybe_start_bot()
         running = services.bot is not None
-        return {"ok": True, "running": running,
-                "note": "机器人已启动。" if running else "已启用，但缺少令牌或凭据，未能启动。"}
+        note = await tr(services.store, "bot_started" if running else "bot_enable_missing")
+        return {"ok": True, "running": running, "note": note}
     await services.stop_bot()
-    return {"ok": True, "running": False, "note": "机器人已停用。"}
+    return {"ok": True, "running": False, "note": await tr(services.store, "bot_disabled")}

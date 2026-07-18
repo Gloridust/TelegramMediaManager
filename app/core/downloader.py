@@ -15,6 +15,7 @@ import time
 from telethon import errors, utils
 
 from app.config import Keys, Paths
+from app.core.i18n import tr
 
 PART_SUFFIX = ".part"
 CHUNK_ALIGN = 4096          # telethon only fast-paths downloads from a 4K-aligned offset
@@ -173,21 +174,21 @@ class DownloadEngine:
         """Resolve a t.me link, enqueue its media (single or album). Returns a
         summary dict for the caller to report."""
         if not await self.tg.is_authorized():
-            return {"ok": False, "error": "用户端尚未登录"}
+            return {"ok": False, "error": await tr(self.store, "not_authorized")}
         folder = folder or self.current_dir
         entity_ref, msg_id = self._parse_link(link)
         if entity_ref is None or msg_id is None:
-            return {"ok": False, "error": "无法解析有效的消息链接"}
+            return {"ok": False, "error": await tr(self.store, "bad_message_link")}
         try:
             entity = await self._resolve_entity(entity_ref)
         except Exception as e:
-            return {"ok": False, "error": f"无法访问该会话：{e}"}
+            return {"ok": False, "error": await tr(self.store, "cannot_access_chat", e=e)}
         try:
             message = await self.user_client.get_messages(entity, ids=msg_id)
         except Exception as e:
-            return {"ok": False, "error": f"获取消息失败：{e}"}
+            return {"ok": False, "error": await tr(self.store, "fetch_message_failed", e=e)}
         if not message:
-            return {"ok": False, "error": "未找到该消息"}
+            return {"ok": False, "error": await tr(self.store, "message_not_found")}
 
         if message.grouped_id:
             album = await self._fetch_album(entity, message)
@@ -202,7 +203,7 @@ class DownloadEngine:
             await self._enqueue(message, True, folder, origin="link",
                                 title=self._display_name(message))
             return {"ok": True, "count": 1, "album": False, "folder": self._rel(folder)}
-        return {"ok": False, "error": "该消息没有可下载的媒体"}
+        return {"ok": False, "error": await tr(self.store, "no_media")}
 
     async def download_message(self, message, use_user=False, folder=None):
         """Enqueue a message object directly (e.g. a forward to the bot)."""
@@ -215,16 +216,16 @@ class DownloadEngine:
     # ================================================================== #
     async def start_channel(self, link, folder=None):
         if self.channel_task and not self.channel_task.done():
-            return {"ok": False, "error": "已有频道下载在进行中，请先取消"}
+            return {"ok": False, "error": await tr(self.store, "channel_busy")}
         if not await self.tg.is_authorized():
-            return {"ok": False, "error": "用户端尚未登录"}
+            return {"ok": False, "error": await tr(self.store, "not_authorized")}
         entity_ref, _ = self._parse_link(link)
         if entity_ref is None:
-            return {"ok": False, "error": "无法解析有效的频道链接"}
+            return {"ok": False, "error": await tr(self.store, "bad_channel_link")}
         try:
             chat = await self._resolve_entity(entity_ref)
         except Exception as e:
-            return {"ok": False, "error": f"无法访问该频道：{e}"}
+            return {"ok": False, "error": await tr(self.store, "cannot_access_channel", e=e)}
         base = folder or self.current_dir
         title = self._sanitize_filename(getattr(chat, "title", None) or str(entity_ref))
         folder = os.path.join(base, title)

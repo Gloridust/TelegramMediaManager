@@ -18,6 +18,7 @@ import httpx
 import yaml
 
 from app.config import Keys, MihomoConfig, Paths
+from app.core.i18n import tr
 
 PROXY_GROUP = "PROXY"
 PROVIDER_NAME = "subscription"
@@ -112,7 +113,7 @@ class ProxyManager:
             with open(cfg_path, "w", encoding="utf-8") as fh:
                 yaml.safe_dump(cfg, fh, allow_unicode=True, sort_keys=False)
         except OSError as e:
-            return False, f"写入 mihomo 配置失败：{e}"
+            return False, await tr(self.store, "mihomo_write_failed", e=e)
         await self.store.set_setting(Keys.SUBSCRIPTION_URL, subscription_url)
         ok, msg = await self.reload()
         return ok, msg
@@ -126,10 +127,10 @@ class ProxyManager:
                 r = await c.put(f"{self._base}/configs", params={"force": "true"},
                                 json={"path": MIHOMO_INTERNAL_CONFIG}, headers=self._headers())
             if r.status_code in (200, 204):
-                return True, "已重新加载代理配置"
-            return False, f"mihomo 拒绝重载（HTTP {r.status_code}）"
+                return True, await tr(self.store, "proxy_reloaded")
+            return False, await tr(self.store, "mihomo_reject", code=r.status_code)
         except Exception as e:
-            return False, f"无法连接 mihomo：{e}"
+            return False, await tr(self.store, "mihomo_unreachable", e=e)
 
     async def is_reachable(self):
         try:

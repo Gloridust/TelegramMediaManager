@@ -5,6 +5,7 @@ import time
 from fastapi import Depends, HTTPException, Request, status
 
 from app.config import WebConfig
+from app.core.i18n import tr
 from app.core.services import Services
 
 COOKIE_NAME = "tmm_session"
@@ -18,13 +19,13 @@ async def current_user(request: Request, services: Services = Depends(get_servic
     """Resolve the logged-in user from the session cookie, or 401."""
     token = request.cookies.get(COOKIE_NAME)
     if not token:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "未登录")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, await tr(services.store, "not_logged_in"))
     session = await services.store.get_session(token)
     if not session:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "会话已过期")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, await tr(services.store, "session_expired"))
     user = await services.store.get_user_by_id(session["user_id"])
     if not user:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "用户不存在")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, await tr(services.store, "user_missing"))
     return user
 
 
