@@ -38,6 +38,7 @@ Downloading media from restricted Telegram channels normally means running a scr
 | 🌐 **Proxy-ready** | mihomo sidecar with `vless`/subscription support, or point at an existing SOCKS5/HTTP proxy. |
 | 🗂 **File manager** | Browse/create folders and choose the download directory, all from the panel. |
 | 🤖 **Optional bot** | Keep a Telegram bot for quick control from your phone — it shares the same engine and state. |
+| 🌍 **Bilingual** | English / 简体中文 UI, switchable on the login screen and in Settings. |
 | 🔒 **No `.env` needed** | Everything is configured in the panel on first run and stored in the data volume. |
 
 ## Quick start
