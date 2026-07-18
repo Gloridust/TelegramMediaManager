@@ -1,0 +1,22 @@
+# Build context hygiene — keep the image lean and free of local state.
+.git
+.github
+.gitignore
+.gitattributes
+data/
+downloads/
+*.session
+*.session-journal
+*.part
+state.db*
+.env
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+docs/
+*.md
+!README.md
+.idea/
+.vscode/
+.DS_Store

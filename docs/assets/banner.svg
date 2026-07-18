@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-label="Telegram Media Manager">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2AABEE"/>
+      <stop offset="1" stop-color="#229ED9"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="300" rx="28" fill="url(#bg)"/>
+  <rect width="1200" height="150" rx="28" fill="url(#sheen)"/>
+  <g transform="translate(96,150)">
+    <circle r="66" fill="#ffffff"/>
+    <path d="M 0 -34 L 0 22 M -26 -4 L 0 22 L 26 -4" fill="none" stroke="#229ED9" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="-30" y="30" width="60" height="12" rx="6" fill="#229ED9"/>
+  </g>
+  <g transform="translate(210,0)" fill="#ffffff" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+    <text x="0" y="140" font-size="60" font-weight="700">Telegram Media Manager</text>
+    <text x="2" y="192" font-size="27" font-weight="400" opacity="0.92">Self-hosted downloader for restricted Telegram media — web panel, resumable, proxy-ready</text>
+    <g transform="translate(2,224)" font-size="20" font-weight="600">
+      <rect x="0" y="0" width="132" height="38" rx="19" fill="#ffffff" opacity="0.16"/>
+      <text x="20" y="25">🐳 Docker</text>
+      <rect x="148" y="0" width="150" height="38" rx="19" fill="#ffffff" opacity="0.16"/>
+      <text x="168" y="25">⏯ Resumable</text>
+      <rect x="312" y="0" width="132" height="38" rx="19" fill="#ffffff" opacity="0.16"/>
+      <text x="332" y="25">🌐 Proxy</text>
+      <rect x="458" y="0" width="176" height="38" rx="19" fill="#ffffff" opacity="0.16"/>
+      <text x="478" y="25">🖥 amd64 · arm64</text>
+    </g>
+  </g>
+</svg>

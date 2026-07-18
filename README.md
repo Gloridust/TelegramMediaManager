@@ -1,112 +1,130 @@
-# Telegram Media Manager
+<div align="center">
 
-A Telegram Bot that collaborates with a User Client (Pseudo-User) to download media from restricted channels/groups.
+<img src="./docs/assets/banner.svg" alt="Telegram Media Manager" width="820" />
+
+<h1>Telegram Media Manager</h1>
+
+**Self-hosted downloader for restricted Telegram media — with a Telegram-style web panel.**
+Deploy to a NAS in one command, configure everything in the browser, and never lose a download to a dropped connection or a restart.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-3390ec.svg)](LICENSE)
+[![Docker image](https://img.shields.io/badge/image-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/Gloridust/TelegramMediaManager/pkgs/container/telegrammediamanager)
+[![Arch](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-informational)](docker/Dockerfile)
+[![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](requirements.txt)
+
+**English** · [简体中文](README.zh-CN.md)
+
+</div>
+
+---
+
+## Why
+
+Downloading media from restricted Telegram channels normally means running a script, editing an `.env`, and babysitting it over SSH. **Telegram Media Manager** turns that into a proper self-hosted app:
+
+- A **web panel** styled after the official Telegram client — no terminal needed.
+- **One-command Docker** deploy to a Synology / QNAP / any NAS, `amd64` **and** `arm64`.
+- **Resumable downloads** — an interrupted transfer continues from the exact byte, across crashes and restarts.
+- **Built-in proxy** via a bundled **mihomo (Clash Meta)** sidecar — paste a `vless`/subscription link and route all traffic through it, for regions where Telegram is blocked.
 
 ## Features
-- **Traditional Bot**: Interacts with you, manages settings.
-- **User Client**: Logs in as your user account to access restricted content.
-- **QR Login**: Easy login via QR code sent to the bot.
-- **Link Processing**: Send message links to the bot, and the user client will download them.
-- **Media Forwarding**: Forward media to the bot for direct download.
-- **Resumable Downloads**: Files stream into `<name>.part` and continue from the last
-  byte after a crash, a network drop, or a restart — nothing is re-downloaded.
-- **Restart Recovery**: Queued jobs, channel scan progress and settings persist in
-  `state.db`; on restart the bot offers to pick up exactly where it left off.
-- **Interactive Menus**: Inline keyboards for the task list, settings (live concurrency
-  tuning), folder browser, and retrying failed downloads.
 
-## Setup
+| | |
+|---|---|
+| 🖥 **Web panel** | Telegram-style UI, light/dark themes, mobile-friendly. Login, setup wizard, live progress over WebSocket. |
+| ⏯ **Resumable** | Streams to `<name>.part`, renamed atomically on completion. Restart-safe; the app offers to resume unfinished work. |
+| 🔗 **Restricted media** | Paste a `t.me` message link to grab single files or whole albums from channels you've joined. |
+| 📂 **Bulk channel** | Download an entire channel; a persistent cursor means resuming never re-scans from the top. |
+| 🌐 **Proxy-ready** | mihomo sidecar with `vless`/subscription support, or point at an existing SOCKS5/HTTP proxy. |
+| 🗂 **File manager** | Browse/create folders and choose the download directory, all from the panel. |
+| 🤖 **Optional bot** | Keep a Telegram bot for quick control from your phone — it shares the same engine and state. |
+| 🌍 **Bilingual** | English / 简体中文 UI, switchable on the login screen and in Settings. |
+| 🔒 **No `.env` needed** | Everything is configured in the panel on first run and stored in the data volume. |
 
-1. **Install Requirements**
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Quick start
 
-2. **Configuration**
-   Copy `.env.example` to `.env` and fill in your details:
-   - `API_ID` & `API_HASH`: Get from [my.telegram.org](https://my.telegram.org)
-   - `BOT_TOKEN`: Get from @BotFather
-   - `ADMIN_ID`: Your Telegram User ID (get from @userinfobot)
+```bash
+# 1. Grab the compose file
+curl -O https://raw.githubusercontent.com/Gloridust/TelegramMediaManager/main/docker-compose.yml
 
-3. **Run**
-   ```bash
-   python main.py
-   ```
+# 2. Launch (app + mihomo proxy sidecar)
+docker compose up -d
 
-## Usage
-
-1. **Start the Bot**: Run the script. The bot will notify you (Admin ID) when it starts.
-2. **Login User Client**:
-   - Send `/login` to the bot.
-   - The bot will send a QR code image.
-   - Scan it with your Telegram App (Settings -> Devices -> Link Desktop Device).
-   - If you have 2FA password, the bot will ask for it. Send it to the bot.
-3. **Download Media**:
-   - **Public/Allowed Content**: Forward messages to the bot.
-   - **Restricted Content**: Copy the message link (e.g., `https://t.me/c/xxxx/xxx`) and send it to the bot.
-4. **Manage Folders**:
-   - Send `/folders` (or tap **🗂 文件夹管理** in the menu) to open the folder browser.
-   - Browse into subfolders, create new ones (**➕ 新建文件夹**), and pick the active
-     download directory (**✅ 设为下载目录**). New downloads always go to the current directory.
-   - All folders live under the working root; the browser cannot escape it.
-5. **Track & Tune**:
-   - Send `/tasks` (or tap **📥 任务列表**) to see what is downloading, queued, or failed,
-     and to retry failures with one tap.
-   - Send `/settings` (or tap **⚙️ 设置**) to change the concurrency live. Lowering it never
-     interrupts a download in progress — surplus workers retire once they go idle.
-6. **Cancel**:
-   - Send `/cancel` to stop a running channel download and clear the queue. Partially
-     downloaded data is kept so it can be resumed later.
-
-## Resuming
-
-Interrupted work is never lost:
-
-- **Mid-file**: data is written to `<name>.part`. On the next attempt the download restarts
-  from the size of that file (aligned down to 4 KB), so only the missing bytes are fetched.
-- **Mid-queue**: every job is recorded in `state.db` before it starts. On restart the bot
-  reports what is unfinished and offers **▶️ 继续下载** or **🗑 放弃并清空**.
-- **Mid-channel**: a channel scan stores a cursor, so resuming continues from the last
-  scanned message instead of re-walking the whole history.
-- Send `/resume` at any time to requeue unfinished work.
-
-### Moving the download tree
-
-Paths are stored **relative to the working root**, never absolute, and always with `/`
-separators. So if you move the whole tree — new drive letter, a remounted Docker volume,
-a migration to another machine — just point the bot at the new location:
-
-```
-/setroot /new/path/to/media
+# 3. Open the panel and follow the setup wizard
+#    http://<your-host>:36091
 ```
 
-Unfinished jobs relocate with it and resume against the real files. If the saved root is
-missing at startup the bot says so instead of silently downloading into a fallback
-directory. Paths outside the root can't be made portable and stay absolute.
+On first run the wizard creates your admin account. Then, in the panel:
 
-Note that the **filesystem is the source of truth** for what is already downloaded: the
-skip check looks for the file on disk, not at the database. Moving an individual finished
-file out of its folder means re-sending that link downloads it again — which is also what
-makes deleting a file a valid way to force a re-download.
+1. **Connect Telegram** — paste your `API ID` / `API Hash` from [my.telegram.org](https://my.telegram.org), scan the QR with your Telegram app (2FA supported).
+2. *(Optional)* **Proxy** — paste a subscription link if you need one; pick a node.
+3. **Download** — paste a `t.me/...` link or a channel link. Watch progress live.
 
-## Commands
-- `/start` — show the menu
-- `/help` — list commands
-- `/login` — QR login for the user client (asks for 2FA password if enabled)
-- `/folders` — folder manager (create / switch the current download directory)
-- `/tasks` — task list; retry failed downloads
-- `/settings` — adjust concurrency (persisted across restarts)
-- `/resume` — continue unfinished downloads
-- `/download_channel` — bulk-download all media from a channel (into the current directory)
-- `/setroot <folder>` — change the working root directory (`/setpath` is kept as an alias)
-- `/status` — show login state, queue size and the current/root directories
-- `/cancel` — cancel the channel download and clear the queue
+> No NAS? The same `docker compose up -d` works on any Linux/macOS/Windows box with Docker.
 
-## Notes
-- The User Client runs locally on your machine/server.
-- `API_ID` and `API_HASH` are mandatory for Telethon — get your own from [my.telegram.org](https://my.telegram.org).
-- Downloads are **idempotent**: re-sending the same link skips files already saved.
-- `MAX_CONCURRENT_DOWNLOADS` sets the *initial* concurrency (default 2); after that the
-  value chosen in `/settings` wins. Keep it low to avoid Telegram flood limits.
-- `state.db` holds queue/settings state and is safe to delete when the bot is stopped —
-  you only lose the resume list, not the downloaded files.
+## Configuration
+
+There is **no required `.env`** — all user settings live in the panel and persist in `./data`. Environment variables only tune infrastructure (data dir, port, mihomo wiring); see [`.env.example`](.env.example) and [docs/configuration.md](docs/configuration.md).
+
+| Volume | Purpose |
+|---|---|
+| `./data` | All state: SQLite DB, Telegram sessions, mihomo config. **Back this up.** |
+| `./downloads` | Where media lands. Point it at your NAS share via `DOWNLOADS_DIR`. |
+
+## Architecture
+
+A UI-agnostic core drives both the web API and the Telegram bot, so their views never drift apart.
+
+```mermaid
+flowchart LR
+  subgraph Browser
+    UI[Telegram-style SPA]
+  end
+  subgraph app["app container"]
+    API[FastAPI + WebSocket]
+    Core[Download engine + Telethon]
+    Bot[Telegram bot -- optional]
+    API --> Core
+    Bot --> Core
+    Core --> DB[(SQLite state)]
+  end
+  subgraph mihomo["mihomo sidecar"]
+    MX[Clash Meta -- vless/subscription]
+  end
+  UI <-->|HTTP / WS| API
+  Core -->|SOCKS5| MX
+  MX -->|tunnel| TG((Telegram))
+  Core -->|MTProto| TG
+```
+
+Full write-up: [docs/architecture.md](docs/architecture.md).
+
+## Documentation
+
+- 📦 [Deployment](docs/deployment.md) — NAS (Synology/QNAP), reverse proxy, HTTPS, backups
+- ⚙️ [Configuration](docs/configuration.md) — environment variables and panel settings
+- 🌐 [Proxy & subscriptions](docs/proxy.md) — mihomo sidecar, `vless`, external proxies
+- 🔒 [Security](docs/security.md) — **read before exposing the panel**
+- 🏗 [Architecture](docs/architecture.md) — how the pieces fit
+
+## Security in one line
+
+The panel controls a **fully logged-in Telegram user account**. Keep it on your LAN or behind an authenticated reverse proxy — **never expose it raw to the internet.** Details in [docs/security.md](docs/security.md).
+
+## Development
+
+```bash
+pip install -r requirements.txt
+python main.py            # serves the panel at http://localhost:36091
+pytest -q                 # run the test suite
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Disclaimer
+
+For downloading media **you are authorized to access** with your own account. You are responsible for complying with Telegram's Terms of Service and applicable law. Not affiliated with Telegram.
+
+## License
+
+[MIT](LICENSE) © Ethan Zou

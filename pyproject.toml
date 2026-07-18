@@ -1,0 +1,21 @@
+[project]
+name = "telegram-media-manager"
+version = "2.0.0"
+description = "Self-hosted Telegram media downloader with a web panel, resumable downloads and a bundled proxy."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Ethan Zou" }]
+keywords = ["telegram", "downloader", "self-hosted", "docker", "mihomo", "nas"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
