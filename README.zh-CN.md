@@ -50,7 +50,7 @@ curl -O https://raw.githubusercontent.com/Gloridust/TelegramMediaManager/main/do
 docker compose up -d
 
 # 3. 打开面板，跟随首次向导
-#    http://<你的主机>:8080
+#    http://<你的主机>:36091
 ```
 
 首次运行时向导会创建管理员账号。随后在面板中：
@@ -114,7 +114,7 @@ flowchart LR
 
 ```bash
 pip install -r requirements.txt
-python main.py            # 面板运行在 http://localhost:8080
+python main.py            # 面板运行在 http://localhost:36091
 pytest -q                 # 运行测试
 ```
 

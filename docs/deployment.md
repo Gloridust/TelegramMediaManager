@@ -21,7 +21,7 @@ curl -O https://raw.githubusercontent.com/Gloridust/TelegramMediaManager/main/do
 docker compose up -d
 ```
 
-Open `http://<host>:8080` and complete the setup wizard.
+Open `http://<host>:36091` and complete the setup wizard.
 
 To send downloads to a specific location and set the mihomo secret, create a
 `.env` next to the compose file (optional):
@@ -48,9 +48,9 @@ DSM 7 with **Container Manager**:
      - /volume1/media/telegram:/downloads
    ```
 3. Container Manager → **Project** → **Create** → point it at that folder → run.
-4. Reach the panel at `http://<nas-ip>:8080`.
+4. Reach the panel at `http://<nas-ip>:36091`.
 
-> If port `8080` is taken, change the left side of `"8080:8080"` to e.g. `"8137:8080"`.
+> If port `36091` is taken, change the left side of `"36091:36091"` to e.g. `"8137:36091"`.
 
 ## QNAP
 
@@ -58,7 +58,7 @@ Container Station 3 supports Compose apps:
 
 1. Container Station → **Applications** → **Create** → paste the compose file.
 2. Adjust the `/downloads` bind to a shared folder (e.g. `/share/Multimedia/telegram`).
-3. Deploy, then open `http://<nas-ip>:8080`.
+3. Deploy, then open `http://<nas-ip>:36091`.
 
 ## Plain `docker run`
 
@@ -66,7 +66,7 @@ Without the proxy sidecar (point at your own proxy later, or go direct):
 
 ```bash
 docker run -d --name tmm \
-  -p 8080:8080 \
+  -p 36091:36091 \
   -e TMM_MIHOMO_ENABLED=0 \
   -v "$PWD/data:/data" \
   -v "$PWD/downloads:/downloads" \
@@ -83,7 +83,7 @@ WebSocket upgrade must be forwarded for live progress. Example **Caddy**:
 
 ```caddyfile
 tmm.example.com {
-    reverse_proxy 127.0.0.1:8080
+    reverse_proxy 127.0.0.1:36091
 }
 ```
 
@@ -91,7 +91,7 @@ Example **Nginx**:
 
 ```nginx
 location / {
-    proxy_pass http://127.0.0.1:8080;
+    proxy_pass http://127.0.0.1:36091;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";

@@ -46,7 +46,7 @@ class WebConfig:
     meant to sit behind the LAN / a reverse proxy — never raw on the internet."""
 
     HOST = os.getenv("TMM_HOST", "0.0.0.0")
-    PORT = int(os.getenv("TMM_PORT", "8080"))
+    PORT = int(os.getenv("TMM_PORT", "36091"))
     SESSION_TTL = int(os.getenv("TMM_SESSION_TTL", str(7 * 24 * 3600)))  # 7 days
     # Set true when served over HTTPS so the session cookie gets the Secure flag.
     SECURE_COOKIE = _env_bool("TMM_SECURE_COOKIE", False)

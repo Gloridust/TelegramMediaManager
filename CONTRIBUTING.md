@@ -19,7 +19,7 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\act
 pip install -r requirements.txt
 pip install pytest
 
-python main.py        # panel at http://localhost:8080
+python main.py        # panel at http://localhost:36091
 pytest -q             # run tests
 ```
 

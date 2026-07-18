@@ -50,7 +50,7 @@ curl -O https://raw.githubusercontent.com/Gloridust/TelegramMediaManager/main/do
 docker compose up -d
 
 # 3. Open the panel and follow the setup wizard
-#    http://<your-host>:8080
+#    http://<your-host>:36091
 ```
 
 On first run the wizard creates your admin account. Then, in the panel:
@@ -114,7 +114,7 @@ The panel controls a **fully logged-in Telegram user account**. Keep it on your 
 
 ```bash
 pip install -r requirements.txt
-python main.py            # serves the panel at http://localhost:8080
+python main.py            # serves the panel at http://localhost:36091
 pytest -q                 # run the test suite
 ```
 

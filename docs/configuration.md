@@ -16,7 +16,7 @@ All optional. Defaults are for the Docker image.
 | `TMM_DATA_DIR` | `/data` | State dir: DB, sessions, mihomo config. |
 | `TMM_DOWNLOADS_DIR` | `/downloads` | Default download root (bind-mount to your share). |
 | `TMM_HOST` | `0.0.0.0` | Bind address inside the container. |
-| `TMM_PORT` | `8080` | HTTP port inside the container. |
+| `TMM_PORT` | `36091` | HTTP port inside the container. |
 | `TMM_SECURE_COOKIE` | `0` | `1` adds the `Secure` flag to the session cookie (set behind HTTPS). |
 | `TMM_SESSION_TTL` | `604800` | Panel session lifetime, seconds (7 days). |
 | `TMM_LOGIN_MAX_ATTEMPTS` | `5` | Failed logins per window before throttling. |

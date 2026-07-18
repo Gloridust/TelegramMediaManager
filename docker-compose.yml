@@ -2,7 +2,7 @@
 #
 #   docker compose up -d
 #
-# Then open http://<host>:8080 and complete the setup wizard. No .env required;
+# Then open http://<host>:36091 and complete the setup wizard. No .env required;
 # everything is configured in the web panel. See docs/deployment.md for NAS
 # (Synology / QNAP) specifics.
 
@@ -19,7 +19,7 @@ services:
     container_name: tmm
     restart: unless-stopped
     ports:
-      - "8080:8080"                     # web panel (keep on LAN / behind a reverse proxy)
+      - "36091:36091"                     # web panel (keep on LAN / behind a reverse proxy)
     environment:
       TMM_MIHOMO_ENABLED: "1"
       TMM_MIHOMO_CONTROLLER: "http://mihomo:9090"
@@ -32,7 +32,7 @@ services:
       - ./data:/data                    # all state: db, sessions, mihomo config
       - ${DOWNLOADS_DIR:-./downloads}:/downloads   # point this at your NAS share
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/health"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:36091/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3

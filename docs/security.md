@@ -27,7 +27,7 @@ Treat this app like your password manager, not like a media server.
 
 1. **Keep it off the open internet.** Bind to your LAN, or put it behind a VPN
    (WireGuard/Tailscale) or an authenticated reverse proxy. Do **not** port-forward
-   `8080` to the world.
+   `36091` to the world.
 2. **Use HTTPS if it leaves the LAN.** Terminate TLS at a reverse proxy and set
    `TMM_SECURE_COOKIE=1`. See [deployment.md](deployment.md#reverse-proxy--https).
 3. **Strong admin password.** It guards your Telegram account.

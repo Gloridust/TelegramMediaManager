@@ -11,7 +11,7 @@ Drop panel screenshots here to show them off in the main README. Suggested set:
 | `files.png` | Folder browser |
 
 To capture them: run `python main.py` (or `docker compose up -d`), open
-`http://localhost:8080`, and screenshot each view. Then add a **Screenshots**
+`http://localhost:36091`, and screenshot each view. Then add a **Screenshots**
 section to `README.md`, e.g.:
 
 ```html

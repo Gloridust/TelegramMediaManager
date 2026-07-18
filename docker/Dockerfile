@@ -20,7 +20,7 @@ ENV PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:$PATH" \
     TMM_DATA_DIR=/data \
     TMM_DOWNLOADS_DIR=/downloads \
-    TMM_PORT=8080
+    TMM_PORT=36091
 
 # curl for the healthcheck; tini for correct signal handling / zombie reaping.
 RUN apt-get update \
@@ -35,7 +35,7 @@ COPY web ./web
 COPY main.py ./
 RUN mkdir -p /data /downloads
 
-EXPOSE 8080
+EXPOSE 36091
 VOLUME ["/data", "/downloads"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
