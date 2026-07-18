@@ -1,2 +1,15 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Normalize line endings: LF in the repo, checked out natively per-platform.
+* text=auto eol=lf
+
+# Scripts and configs that MUST stay LF (they run in Linux containers).
+*.sh   text eol=lf
+*.py   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf
+
+# Binary assets — never touch.
+*.png binary
+*.jpg binary
+*.ico binary
+*.session binary

@@ -1,0 +1,59 @@
+# TelegramMediaManager — one-command deployment.
+#
+#   docker compose up -d
+#
+# Then open http://<host>:8080 and complete the setup wizard. No .env required;
+# everything is configured in the web panel. See docs/deployment.md for NAS
+# (Synology / QNAP) specifics.
+
+name: telegram-media-manager
+
+services:
+  app:
+    image: ghcr.io/gloridust/telegram-media-manager:latest
+    # To build locally instead of pulling, comment out `image:` above and
+    # uncomment the block below:
+    # build:
+    #   context: .
+    #   dockerfile: docker/Dockerfile
+    container_name: tmm
+    restart: unless-stopped
+    ports:
+      - "8080:8080"                     # web panel (keep on LAN / behind a reverse proxy)
+    environment:
+      TMM_MIHOMO_ENABLED: "1"
+      TMM_MIHOMO_CONTROLLER: "http://mihomo:9090"
+      TMM_MIHOMO_HOST: "mihomo"
+      TMM_MIHOMO_PORT: "7890"
+      TMM_MIHOMO_SECRET: "${MIHOMO_SECRET:-change-me}"
+      TMM_MIHOMO_CONFIG_PATH: "/root/.config/mihomo/config.yaml"
+      # TMM_SECURE_COOKIE: "1"          # enable when serving over HTTPS
+    volumes:
+      - ./data:/data                    # all state: db, sessions, mihomo config
+      - ${DOWNLOADS_DIR:-./downloads}:/downloads   # point this at your NAS share
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks: [tmm]
+
+  mihomo:
+    image: metacubex/mihomo:latest
+    container_name: tmm-mihomo
+    restart: unless-stopped
+    volumes:
+      # Shared with the app's ./data/mihomo — the app generates the config here.
+      - ./data/mihomo:/root/.config/mihomo
+    # Start after the app is healthy, by which point the initial config exists.
+    depends_on:
+      app:
+        condition: service_healthy
+    # Proxy (7890) and controller (9090) ports are intentionally NOT published —
+    # only the app container needs them, over the internal network.
+    networks: [tmm]
+
+networks:
+  tmm:
+    driver: bridge

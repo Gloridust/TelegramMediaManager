@@ -6,7 +6,7 @@ API and the Telegram bot receive the same ``Services`` object, which is what
 keeps their state consistent.
 """
 
-from app.config import DEFAULTS, Keys, Paths
+from app.config import DEFAULTS, Keys, MihomoConfig, Paths
 from app.core.downloader import DownloadEngine
 from app.core.events import EventBus
 from app.core.proxy import ProxyManager
@@ -28,6 +28,10 @@ class Services:
         for k, v in DEFAULTS.items():
             if await self.store.get_setting(k) is None:
                 await self.store.set_setting(k, v)
+
+        # Ensure the mihomo sidecar has a valid config to boot from.
+        if MihomoConfig.ENABLED:
+            await self.proxy.ensure_config()
 
         # The queue-based worker pool is always running; it is harmless before
         # login (jobs simply wait) and ready the moment a client connects.

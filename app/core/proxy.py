@@ -70,6 +70,38 @@ class ProxyManager:
             "rules": [f"MATCH,{PROXY_GROUP}"],
         }
 
+    def _render_default(self):
+        """Minimal valid config so the sidecar can start before any subscription
+        is configured. Everything goes direct until the user adds nodes."""
+        return {
+            "mixed-port": MihomoConfig.PROXY_PORT,
+            "allow-lan": True,
+            "bind-address": "*",
+            "mode": "rule",
+            "log-level": "warning",
+            "external-controller": "0.0.0.0:9090",
+            "secret": self._secret,
+            "proxies": [],
+            "proxy-groups": [{"name": PROXY_GROUP, "type": "select", "proxies": ["DIRECT"]}],
+            "rules": [f"MATCH,DIRECT"],
+        }
+
+    async def ensure_config(self):
+        """Write an initial config on first boot if none exists, so the mihomo
+        container has something valid to start from. Regenerated from the stored
+        subscription if one was already saved."""
+        Paths.ensure()
+        cfg_path = os.path.join(Paths.MIHOMO_DIR, "config.yaml")
+        if os.path.exists(cfg_path):
+            return
+        sub = await self.store.get_setting(Keys.SUBSCRIPTION_URL)
+        cfg = self._render_config(sub) if sub else self._render_default()
+        try:
+            with open(cfg_path, "w", encoding="utf-8") as fh:
+                yaml.safe_dump(cfg, fh, allow_unicode=True, sort_keys=False)
+        except OSError as e:
+            print(f"Could not write initial mihomo config: {e}")
+
     async def apply_subscription(self, subscription_url):
         """Write a fresh mihomo config from the subscription and reload it.
         Returns (ok, message)."""
