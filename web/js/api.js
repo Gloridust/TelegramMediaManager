@@ -55,6 +55,7 @@ export const api = {
   settings: () => api.get("/api/settings"),
   setProxy: (b) => api.post("/api/settings/proxy", b),
   setSubscription: (b) => api.post("/api/settings/subscription", b),
+  proxyMode: (mode) => api.post("/api/settings/proxy/mode", { mode }),
   proxyNodes: () => api.get("/api/settings/proxy/nodes"),
   proxySelect: (b) => api.post("/api/settings/proxy/select", b),
   proxyTest: (b) => api.post("/api/settings/proxy/test", b),

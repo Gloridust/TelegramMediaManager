@@ -1,18 +1,18 @@
 name: Build & Publish Docker image
 
-# Builds a multi-arch (amd64 + arm64) image and pushes it to GHCR on pushes to
-# main and on version tags. Pull requests build only (no push) as a sanity check.
+# Builds a multi-arch (amd64 + arm64) image and pushes it to GHCR and Docker Hub
+# on pushes to main and on version tags. Pull requests build only (no push).
+#
+# Docker Hub is optional: it is used only if the DOCKERHUB_USERNAME and
+# DOCKERHUB_TOKEN repository secrets are set. Without them the build still
+# publishes to GHCR and does not fail.
 
 on:
   push:
-    branches: [main, v2-web-panel]
+    branches: [main]
     tags: ["v*"]
   pull_request:
     branches: [main]
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   docker:
@@ -33,15 +33,37 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request' && secrets.DOCKERHUB_TOKEN != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compose image list
+        id: imgs
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          {
+            echo "images<<EOF"
+            echo "ghcr.io/${{ github.repository_owner }}/telegrammediamanager"
+            if [ -n "$DH_TOKEN" ] && [ -n "$DH_USER" ]; then
+              echo "docker.io/$DH_USER/telegrammediamanager"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ steps.imgs.outputs.images }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}

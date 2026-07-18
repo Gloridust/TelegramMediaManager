@@ -344,36 +344,64 @@ function renderTgConnect(host) {
 async function startQrFlow(flow) {
   flow.innerHTML = `<div class="empty"><span class="spin"></span> ${t("generating_qr")}</div>`;
   try { await api.tgLoginStart(); } catch (e) { flow.innerHTML = `<p class="error-text">${esc(e.message)}</p>`; return; }
-  let poll = null;
+  let poll = null, phase = null, lastUrl = null;
   const draw = (st) => {
     if (st.state === "waiting") {
-      flow.innerHTML = `<div class="qr-wrap">
-        <img src="/api/telegram/login/qr.png?t=${Date.now()}" alt="QR">
-        <div class="qr-steps">${t("qr_steps")}</div>
-      </div>`;
+      // Render the QR frame once; only swap the image when the token changes,
+      // so the code doesn't flicker/reload on every poll.
+      if (phase !== "waiting") {
+        phase = "waiting"; lastUrl = null;
+        flow.innerHTML = `<div class="qr-wrap"><img id="qr-img" alt="QR">
+          <div class="qr-steps">${t("qr_steps")}</div></div>`;
+      }
+      if (st.url && st.url !== lastUrl) {
+        lastUrl = st.url;
+        const img = document.querySelector("#qr-img");
+        if (img) img.src = "/api/telegram/login/qr.png?t=" + Date.now();
+      }
     } else if (st.state === "need_password") {
-      flow.innerHTML = `<div class="field"><label>${t("tfa_label")}</label>
-        <input class="input" id="tfa" type="password"></div>
-        <button class="btn" id="tfa-btn">${t("submit")}</button>`;
-      $("#tfa-btn").addEventListener("click", async () => {
-        try { await api.tgLoginPassword({ password: $("#tfa").value }); toast(t("submitted"), "ok"); }
-        catch (e) { toast(e.message, "err"); }
-      });
+      // Render the field ONCE — re-rendering on each poll is what stole focus and
+      // submitted an empty password. Subsequent polls only touch the error line.
+      if (phase !== "need_password") {
+        phase = "need_password";
+        flow.innerHTML = `<div class="field"><label>${t("tfa_label")}</label>
+          <input class="input" id="tfa" type="password" autocomplete="current-password"></div>
+          <p class="error-text hidden" id="tfa-err"></p>
+          <button class="btn" id="tfa-btn">${t("submit")}</button>`;
+        const submit = async () => {
+          const btn = $("#tfa-btn"), err = $("#tfa-err");
+          if (!$("#tfa").value) return;  // don't submit an empty password
+          err.classList.add("hidden");
+          btn.disabled = true; btn.textContent = t("checking");
+          try { await api.tgLoginPassword({ password: $("#tfa").value }); }
+          catch (e) { toast(e.message, "err"); btn.disabled = false; btn.textContent = t("submit"); }
+        };
+        $("#tfa-btn").addEventListener("click", submit);
+        $("#tfa").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } });
+        setTimeout(() => { const i = $("#tfa"); if (i) i.focus(); }, 60);
+      }
+      // Show a wrong/empty-password message and re-enable submit, without
+      // re-rendering (so the input keeps its value and focus).
+      const err = $("#tfa-err"), btn = $("#tfa-btn");
+      if (err && st.error) {
+        err.textContent = st.error; err.classList.remove("hidden");
+        if (btn) { btn.disabled = false; btn.textContent = t("submit"); }
+      }
     } else if (st.state === "success") {
       clearInterval(poll);
       toast(t("tg_login_success"), "ok");
       refreshTgChip();
       showView("dashboard");
     } else if (st.state === "error") {
+      clearInterval(poll); phase = "error";
       flow.innerHTML = `<p class="error-text">${esc(st.error || t("login_failed"))}</p>
         <button class="btn secondary" id="retry-qr">${t("retry")}</button>`;
-      clearInterval(poll);
       $("#retry-qr").addEventListener("click", () => startQrFlow(flow));
     }
   };
   const tick = async () => { try { draw(await api.tgLoginStatus()); } catch (_) {} };
   await tick();
-  poll = setInterval(tick, 2000);
+  poll = setInterval(tick, 1500);
 }
 
 function renderStats(host, d) {
@@ -461,101 +489,137 @@ async function mountFiles(host) {
 
 // ---------- Proxy ---------- //
 async function mountProxy(host) {
-  const s = await api.settings();
-  const p = s.proxy;
-  const modeName = { off: t("mode_off"), mihomo: t("mode_mihomo"), external: t("mode_external") }[p.mode] || p.mode;
-  host.innerHTML = `
-    <div class="panel">
-      <h2>${t("proxy_status")}</h2>
-      <div class="setting-row">
-        <span class="dot ${p.mihomo_reachable ? "on" : "off"}"></span>
-        <div class="label">${t("mihomo_sidecar")}
-          <small>${p.mihomo_enabled ? (p.mihomo_reachable ? t("mihomo_connected") : t("mihomo_unreachable")) : t("mihomo_disabled")}</small></div>
-        <span class="chip">${t("current_mode", { m: modeName })}</span>
-      </div>
-    </div>
-    <div class="panel">
-      <h2>${t("subscription_h")}</h2>
-      <p class="panel-note">${t("subscription_note")}</p>
-      <div class="composer">
-        <input class="input" id="sub-url" placeholder="https://.../subscribe?token=...">
-        <button class="btn small" id="sub-save">${t("save_enable")}</button>
-        <button class="btn small secondary" id="sub-refresh">${t("refresh")}</button>
-      </div>
-      ${p.subscription_set ? `<p class="hint">${t("subscription_set")}</p>` : ""}
-      <div id="nodes" style="margin-top:14px"></div>
-    </div>
-    <div class="panel">
-      <h2>${t("ext_proxy_h")}</h2>
-      <p class="panel-note">${t("ext_proxy_note")}</p>
-      <div class="setting-row"><div class="label">${t("mode_label")}</div>
-        <select class="input" id="ext-mode" style="max-width:180px">
-          <option value="off">${t("mode_direct_opt")}</option>
-          <option value="external">${t("mode_external_opt")}</option>
-        </select></div>
-      <div class="row"><div class="field"><label>${t("type_label")}</label>
-        <select class="input" id="ext-type"><option value="socks5">SOCKS5</option><option value="http">HTTP</option></select></div>
-        <div class="field"><label>${t("address")}</label><input class="input" id="ext-host" placeholder="127.0.0.1"></div>
-        <div class="field"><label>${t("port")}</label><input class="input" id="ext-port" placeholder="7890"></div></div>
-      <button class="btn small" id="ext-save">${t("save")}</button>
-    </div>`;
-
-  $("#ext-mode").value = p.mode === "external" ? "external" : "off";
-  $("#ext-type").value = p.type || "socks5";
-  if (p.host) $("#ext-host").value = p.host;
-  if (p.port) $("#ext-port").value = p.port;
-
-  $("#sub-save").addEventListener("click", async () => {
-    const url = $("#sub-url").value.trim();
-    if (!url) return toast(t("fill_sub"), "err");
-    toast(t("applying_sub"));
-    try {
-      const r = await api.setSubscription({ url });
-      if (r.ok) { toast(r.note || t("saved"), "ok"); loadNodes(); }
-      else toast(r.error, "err");
-    } catch (e) { toast(e.message, "err"); }
-  });
-  $("#sub-refresh").addEventListener("click", async () => {
-    const r = await api.proxyRefresh();
-    toast(r.ok ? t("refreshed_sub") : (r.error || t("refresh_failed")), r.ok ? "ok" : "err");
-    loadNodes();
-  });
-  $("#ext-save").addEventListener("click", async () => {
-    const body = { mode: $("#ext-mode").value, type: $("#ext-type").value,
-      host: $("#ext-host").value.trim(), port: parseInt($("#ext-port").value.trim(), 10) || null };
-    try { const r = await api.setProxy(body); toast(r.note || t("saved"), "ok"); }
-    catch (e) { toast(e.message, "err"); }
-  });
-
-  async function loadNodes() {
-    const box = $("#nodes");
-    box.innerHTML = `<div class="empty"><span class="spin"></span></div>`;
-    const r = await api.proxyNodes();
-    if (!r.ok) { box.innerHTML = `<p class="hint">${esc(r.error || t("cannot_get_nodes"))}</p>`; return; }
-    if (!r.nodes.length) { box.innerHTML = `<p class="hint">${t("no_nodes")}</p>`; return; }
-    box.innerHTML = r.nodes.map((n) => `
-      <div class="node ${n === r.selected ? "selected" : ""}" data-name="${esc(n)}">
-        <span class="name">${esc(n)}</span>
-        <span class="delay" data-delay></span>
-        <button class="btn tiny secondary" data-test>${t("test")}</button>
-        <button class="btn tiny" data-select ${n === r.selected ? "disabled" : ""}>${n === r.selected ? t("in_use") : t("select")}</button>
-      </div>`).join("");
-    box.querySelectorAll(".node").forEach((el) => {
-      const name = el.dataset.name;
-      el.querySelector("[data-select]").addEventListener("click", async () => {
-        const r2 = await api.proxySelect({ name });
-        toast(r2.ok ? t("switched_node") : (r2.error || t("op_failed")), r2.ok ? "ok" : "err");
-        if (r2.ok) loadNodes();
-      });
-      el.querySelector("[data-test]").addEventListener("click", async (ev) => {
-        ev.target.textContent = "…";
-        const r2 = await api.proxyTest({ name });
-        el.querySelector("[data-delay]").textContent = r2.ok ? r2.delay + " ms" : t("timeout");
-        ev.target.textContent = t("test");
-      });
-    });
+  // load() re-fetches settings and re-renders, so the status card (mode chip)
+  // never goes stale after a save/toggle.
+  async function load() {
+    host.innerHTML = `<div class="empty"><span class="spin"></span></div>`;
+    let s;
+    try { s = await api.settings(); } catch (e) { host.innerHTML = `<p class="error-text">${esc(e.message)}</p>`; return; }
+    render(s.proxy);
   }
-  if (p.subscription_set) loadNodes();
+
+  function render(p) {
+    const modeName = { off: t("mode_off"), mihomo: t("mode_mihomo"), external: t("mode_external") }[p.mode] || p.mode;
+    const viaProxy = p.mode === "mihomo";
+    host.innerHTML = `
+      <div class="panel">
+        <h2>${t("proxy_status")}</h2>
+        <div class="setting-row">
+          <span class="dot ${p.mihomo_reachable ? "on" : "off"}"></span>
+          <div class="label">${t("mihomo_sidecar")}
+            <small>${p.mihomo_enabled ? (p.mihomo_reachable ? t("mihomo_connected") : t("mihomo_unreachable")) : t("mihomo_disabled")}</small></div>
+          <span class="chip">${t("current_mode", { m: modeName })}</span>
+        </div>
+        <div class="setting-row">
+          <div class="label">${t("traffic_label")}</div>
+          <div class="lang-switch">
+            <button data-mode="off" class="${!viaProxy ? "on" : ""}">${t("mode_direct_btn")}</button>
+            <button data-mode="mihomo" class="${viaProxy ? "on" : ""}">${t("mode_proxy_btn")}</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>${t("subscription_h")}</h2>
+        <p class="panel-note">${t("subscription_note")}</p>
+        <div class="composer">
+          <input class="input" id="sub-url" placeholder="https://.../subscribe  ·  vless://…">
+          <button class="btn small" id="sub-save">${t("save_enable")}</button>
+          <button class="btn small secondary" id="sub-refresh">${t("refresh")}</button>
+        </div>
+        ${p.subscription_set ? `<p class="hint">${t("subscription_set")}</p>` : ""}
+        <div id="nodes" style="margin-top:14px"></div>
+      </div>
+      <div class="panel">
+        <h2>${t("ext_proxy_h")}</h2>
+        <p class="panel-note">${t("ext_proxy_note")}</p>
+        <div class="setting-row"><div class="label">${t("mode_label")}</div>
+          <select class="input" id="ext-mode" style="max-width:180px">
+            <option value="off">${t("mode_direct_opt")}</option>
+            <option value="external">${t("mode_external_opt")}</option>
+          </select></div>
+        <div class="row"><div class="field"><label>${t("type_label")}</label>
+          <select class="input" id="ext-type"><option value="socks5">SOCKS5</option><option value="http">HTTP</option></select></div>
+          <div class="field"><label>${t("address")}</label><input class="input" id="ext-host" placeholder="127.0.0.1"></div>
+          <div class="field"><label>${t("port")}</label><input class="input" id="ext-port" placeholder="7890"></div></div>
+        <button class="btn small" id="ext-save">${t("save")}</button>
+      </div>`;
+
+    // Traffic direction toggle (direct ⇄ via the mihomo sidecar).
+    host.querySelectorAll(".lang-switch [data-mode]").forEach((b) => b.addEventListener("click", async () => {
+      const wantProxy = b.dataset.mode === "mihomo";
+      if (wantProxy === viaProxy) return;
+      try {
+        const r = await api.proxyMode(b.dataset.mode);
+        toast(r.note || (wantProxy ? t("switched_proxy") : t("switched_direct")), "ok");
+      } catch (e) { toast(e.message, "err"); }
+      load();
+    }));
+
+    $("#ext-mode").value = p.mode === "external" ? "external" : "off";
+    $("#ext-type").value = p.type || "socks5";
+    if (p.host) $("#ext-host").value = p.host;
+    if (p.port) $("#ext-port").value = p.port;
+
+    $("#sub-save").addEventListener("click", async () => {
+      const url = $("#sub-url").value.trim();
+      if (!url) return toast(t("fill_sub"), "err");
+      toast(t("applying_sub"));
+      try {
+        const r = await api.setSubscription({ url });
+        if (r.ok) { toast(r.note || t("saved"), "ok"); load(); }
+        else toast(r.error, "err");
+      } catch (e) { toast(e.message, "err"); }
+    });
+    $("#sub-refresh").addEventListener("click", async (ev) => {
+      const btn = ev.currentTarget;
+      btn.disabled = true;  // avoid spamming the airport into a rate-limit
+      try {
+        const r = await api.proxyRefresh();
+        toast(r.ok ? t("refreshed_sub") : (r.error || t("refresh_failed")), r.ok ? "ok" : "err");
+        loadNodes();
+      } finally {
+        setTimeout(() => { btn.disabled = false; }, 3000);
+      }
+    });
+    $("#ext-save").addEventListener("click", async () => {
+      const body = { mode: $("#ext-mode").value, type: $("#ext-type").value,
+        host: $("#ext-host").value.trim(), port: parseInt($("#ext-port").value.trim(), 10) || null };
+      try { const r = await api.setProxy(body); toast(r.note || t("saved"), "ok"); load(); }
+      catch (e) { toast(e.message, "err"); }
+    });
+
+    async function loadNodes() {
+      const box = $("#nodes");
+      box.innerHTML = `<div class="empty"><span class="spin"></span></div>`;
+      const r = await api.proxyNodes();
+      if (!r.ok) { box.innerHTML = `<p class="hint">${esc(r.error || t("cannot_get_nodes"))}</p>`; return; }
+      if (!r.nodes.length) { box.innerHTML = `<p class="hint">${t("no_nodes")}</p>`; return; }
+      box.innerHTML = r.nodes.map((n) => `
+        <div class="node ${n === r.selected ? "selected" : ""}" data-name="${esc(n)}">
+          <span class="name">${esc(n)}</span>
+          <span class="delay" data-delay></span>
+          <button class="btn tiny secondary" data-test>${t("test")}</button>
+          <button class="btn tiny" data-select ${n === r.selected ? "disabled" : ""}>${n === r.selected ? t("in_use") : t("select")}</button>
+        </div>`).join("");
+      box.querySelectorAll(".node").forEach((el) => {
+        const name = el.dataset.name;
+        el.querySelector("[data-select]").addEventListener("click", async () => {
+          const r2 = await api.proxySelect({ name });
+          toast(r2.ok ? t("switched_node") : (r2.error || t("op_failed")), r2.ok ? "ok" : "err");
+          if (r2.ok) loadNodes();
+        });
+        el.querySelector("[data-test]").addEventListener("click", async (ev) => {
+          ev.target.textContent = "…";
+          const r2 = await api.proxyTest({ name });
+          el.querySelector("[data-delay]").textContent = r2.ok ? r2.delay + " ms" : t("timeout");
+          ev.target.textContent = t("test");
+        });
+      });
+    }
+    if (p.subscription_set) loadNodes();
+  }
+
+  await load();
   return {};
 }
 

@@ -10,6 +10,7 @@ import asyncio
 import io
 import os
 import time
+from datetime import datetime, timedelta, timezone
 
 import qrcode
 from telethon import TelegramClient, errors
@@ -141,8 +142,9 @@ class TelegramManager:
     # QR + 2FA login (driven by the web panel via polling)
     # ------------------------------------------------------------------ #
     async def start_login(self):
-        """Begin (or restart) a QR login. Returns the current status dict."""
-        if self._login_state == "waiting" and self._qr_url:
+        """Begin (or continue) a QR login. Returns the current status dict."""
+        # A flow already collecting the QR scan or the 2FA password is left alone.
+        if self._login_state in ("waiting", "need_password"):
             return self.login_status()
         if not self.user_client:
             await self.build_user_client()
@@ -151,20 +153,43 @@ class TelegramManager:
             return self.login_status()
 
         self._login_error = None
-        self._login_state = "waiting"
-        self._qr = await self.user_client.qr_login()
+        try:
+            self._qr = await self.user_client.qr_login()
+        except errors.SessionPasswordNeededError:
+            # A previous scan is already approved server-side — only the 2FA
+            # password remains. Go straight to collecting it instead of erroring.
+            self._spawn_login(self._collect_password())
+            return self.login_status()
         self._qr_url = self._qr.url
-        if self._login_task and not self._login_task.done():
-            self._login_task.cancel()
-        self._login_task = asyncio.create_task(self._login_loop())
+        self._login_state = "waiting"
+        self._spawn_login(self._login_loop())
         return self.login_status()
 
-    async def _login_loop(self):
-        """Wait for the QR to be scanned, refreshing it as it expires."""
+    def _spawn_login(self, coro):
+        if self._login_task and not self._login_task.done():
+            self._login_task.cancel()
+        self._login_task = asyncio.create_task(coro)
+
+    def _seconds_until_expiry(self):
+        """How long the current QR token is still valid, in seconds."""
         try:
-            for _ in range(20):  # ~10 minutes worth of 30s windows
+            return (self._qr.expires - datetime.now(timezone.utc)).total_seconds()
+        except Exception:
+            return 30.0
+
+    async def _login_loop(self):
+        """Wait for the QR to be scanned, refreshing it a few seconds BEFORE it
+        expires so the user never scans a stale (already-expired) token — the
+        cause of the "authorization token has expired" error even when the phone
+        reports success."""
+        try:
+            deadline = datetime.now(timezone.utc) + timedelta(minutes=10)
+            while datetime.now(timezone.utc) < deadline:
+                self._qr_url = self._qr.url
+                # Refresh ~8s before expiry; clamp to a sane [5s, 30s] window.
+                wait_for = max(5.0, min(self._seconds_until_expiry() - 8.0, 30.0))
                 try:
-                    await self._qr.wait(timeout=30)
+                    await self._qr.wait(timeout=wait_for)
                     self._login_state = "success"
                     self._qr_url = None
                     return
@@ -173,24 +198,17 @@ class TelegramManager:
                         await self._qr.recreate()
                     except Exception:
                         self._qr = await self.user_client.qr_login()
-                    self._qr_url = self._qr.url
+                    continue
+                except errors.AuthTokenExpiredError:
+                    # A stale scan slipped through the margin — refresh silently
+                    # and let the user scan the new code, instead of dead-ending.
+                    try:
+                        await self._qr.recreate()
+                    except Exception:
+                        self._qr = await self.user_client.qr_login()
                     continue
                 except errors.SessionPasswordNeededError:
-                    self._login_state = "need_password"
-                    self._qr_url = None
-                    self._password_future = asyncio.get_event_loop().create_future()
-                    try:
-                        password = await asyncio.wait_for(self._password_future, timeout=300)
-                    except asyncio.TimeoutError:
-                        self._login_state = "error"
-                        self._login_error = await tr(self.store, "tfa_timeout")
-                        return
-                    try:
-                        await self.user_client.sign_in(password=password)
-                        self._login_state = "success"
-                    except Exception as e:
-                        self._login_state = "error"
-                        self._login_error = await tr(self.store, "tfa_failed", e=e)
+                    await self._collect_password()
                     return
             self._login_state = "error"
             self._login_error = await tr(self.store, "qr_expired")
@@ -199,6 +217,35 @@ class TelegramManager:
         except Exception as e:
             self._login_state = "error"
             self._login_error = str(e)
+
+    async def _collect_password(self):
+        """Collect the 2FA password, re-prompting on an empty or wrong entry
+        instead of dead-ending — so a mistyped password is recoverable."""
+        while True:
+            self._login_state = "need_password"
+            self._qr_url = None
+            self._password_future = asyncio.get_event_loop().create_future()
+            try:
+                password = await asyncio.wait_for(self._password_future, timeout=300)
+            except asyncio.TimeoutError:
+                self._login_state = "error"
+                self._login_error = await tr(self.store, "tfa_timeout")
+                return
+            if not password:  # empty submit (e.g. lost focus) — ask again
+                self._login_error = await tr(self.store, "password_required")
+                continue
+            try:
+                await self.user_client.sign_in(password=password)
+                self._login_state = "success"
+                self._login_error = None
+                return
+            except errors.PasswordHashInvalidError:
+                self._login_error = await tr(self.store, "password_wrong")
+                continue  # stay on the password screen, let them retry
+            except Exception as e:
+                self._login_state = "error"
+                self._login_error = await tr(self.store, "tfa_failed", e=e)
+                return
 
     async def submit_password(self, password):
         if self._login_state != "need_password" or not self._password_future:
