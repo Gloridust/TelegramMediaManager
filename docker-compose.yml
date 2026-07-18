@@ -10,7 +10,7 @@ name: telegram-media-manager
 
 services:
   app:
-    image: ghcr.io/gloridust/telegram-media-manager:latest
+    image: ghcr.io/gloridust/telegrammediamanager:latest
     # To build locally instead of pulling, comment out `image:` above and
     # uncomment the block below:
     # build:
