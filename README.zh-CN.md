@@ -8,7 +8,7 @@
 一条命令部署到 NAS，全部配置在浏览器里完成，断网或重启都不会丢失下载进度。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-3390ec.svg)](LICENSE)
-[![Docker image](https://img.shields.io/badge/image-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/Gloridust/TelegramMediaManager/pkgs/container/telegrammediamanager)
+[![Docker Hub](https://img.shields.io/docker/pulls/gloridust/telegrammediamanager?logo=docker&logoColor=white&label=docker%20pulls)](https://hub.docker.com/r/gloridust/telegrammediamanager)
 [![Arch](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-informational)](docker/Dockerfile)
 [![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](requirements.txt)
 

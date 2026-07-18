@@ -8,7 +8,7 @@
 Deploy to a NAS in one command, configure everything in the browser, and never lose a download to a dropped connection or a restart.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-3390ec.svg)](LICENSE)
-[![Docker image](https://img.shields.io/badge/image-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/Gloridust/TelegramMediaManager/pkgs/container/telegrammediamanager)
+[![Docker Hub](https://img.shields.io/docker/pulls/gloridust/telegrammediamanager?logo=docker&logoColor=white&label=docker%20pulls)](https://hub.docker.com/r/gloridust/telegrammediamanager)
 [![Arch](https://img.shields.io/badge/arch-amd64%20%7C%20arm64-informational)](docker/Dockerfile)
 [![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](requirements.txt)
 

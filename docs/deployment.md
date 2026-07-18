@@ -70,8 +70,11 @@ docker run -d --name tmm \
   -e TMM_MIHOMO_ENABLED=0 \
   -v "$PWD/data:/data" \
   -v "$PWD/downloads:/downloads" \
-  ghcr.io/gloridust/telegrammediamanager:latest
+  gloridust/telegrammediamanager:latest
 ```
+
+> The image is published to **Docker Hub** (`gloridust/telegrammediamanager`) and
+> **GHCR** (`ghcr.io/gloridust/telegrammediamanager`) — use whichever you prefer.
 
 ## Reverse proxy & HTTPS
 
