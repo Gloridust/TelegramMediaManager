@@ -37,27 +37,32 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request' && secrets.DOCKERHUB_TOKEN != ''
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
+      # Decide the target registries in a step (the `secrets` context is NOT
+      # allowed in `if:` conditions, so we surface a boolean output instead).
       - name: Compose image list
         id: imgs
         env:
           DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
           DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
+          HAS="false"
           {
             echo "images<<EOF"
             echo "ghcr.io/${{ github.repository_owner }}/telegrammediamanager"
             if [ -n "$DH_TOKEN" ] && [ -n "$DH_USER" ]; then
               echo "docker.io/$DH_USER/telegrammediamanager"
+              HAS="true"
             fi
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+          echo "dockerhub=$HAS" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request' && steps.imgs.outputs.dockerhub == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Docker metadata
         id: meta
