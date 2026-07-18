@@ -24,6 +24,8 @@ MESSAGES = {
     # --- telegram login ---
     "tfa_timeout": {"zh": "两步验证密码输入超时", "en": "Two-step verification password timed out"},
     "tfa_failed": {"zh": "两步验证失败：{e}", "en": "Two-step verification failed: {e}"},
+    "password_wrong": {"zh": "两步验证密码错误，请重试", "en": "Wrong 2FA password, please try again"},
+    "password_required": {"zh": "请输入两步验证密码", "en": "Please enter your 2FA password"},
     "qr_expired": {"zh": "二维码已过期，请重试", "en": "QR code expired, please retry"},
     "need_api_creds": {"zh": "请先填写 API ID / API Hash", "en": "Please set API ID / API Hash first"},
     "login_start_failed": {"zh": "无法开始登录：{e}", "en": "Could not start login: {e}"},
@@ -52,6 +54,14 @@ MESSAGES = {
     "proxy_reloaded": {"zh": "已重新加载代理配置", "en": "Proxy configuration reloaded"},
     "mihomo_reject": {"zh": "mihomo 拒绝重载（HTTP {code}）", "en": "mihomo refused reload (HTTP {code})"},
     "mihomo_unreachable": {"zh": "无法连接 mihomo：{e}", "en": "Cannot reach mihomo: {e}"},
+    "no_valid_nodes": {"zh": "未能从链接解析出有效节点", "en": "No valid nodes could be parsed from the links"},
+    "proxy_loading": {"zh": "代理正在应用配置，请稍候再刷新", "en": "Proxy is applying config — please refresh in a moment"},
+    "cannot_get_nodes": {"zh": "无法获取节点", "en": "Cannot fetch nodes"},
+    "node_timeout": {"zh": "超时或不可用", "en": "Timed out or unavailable"},
+    "refresh_failed_detail": {
+        "zh": "刷新订阅失败：{detail}（多为刷新过于频繁被机场限流，或订阅已失效；当前已选节点仍可用，稍后再试）",
+        "en": "Subscription refresh failed: {detail} (usually the airport rate-limiting frequent refreshes, or an expired link; the selected node still works — try again later)",
+    },
 }
 
 SUPPORTED = ("zh", "en")

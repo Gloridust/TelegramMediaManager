@@ -110,6 +110,24 @@ async def proxy_nodes(services: Services = Depends(get_services)):
     return await services.proxy.list_nodes()
 
 
+class ModeBody(BaseModel):
+    mode: str  # 'off' (direct) | 'mihomo' (via the sidecar)
+
+
+@router.post("/proxy/mode")
+async def set_proxy_mode(body: ModeBody, services: Services = Depends(get_services)):
+    """Toggle between direct and routing through the mihomo sidecar, without
+    touching the configured subscription/nodes."""
+    if body.mode not in ("off", "mihomo"):
+        return {"ok": False}
+    await services.store.set_setting(Keys.PROXY_MODE, body.mode)
+    if body.mode == "mihomo":
+        await services.store.set_setting(Keys.PROXY_HOST, MihomoConfig.PROXY_HOST)
+        await services.store.set_setting(Keys.PROXY_PORT, MihomoConfig.PROXY_PORT)
+    note = await _reconnect_note(services)
+    return {"ok": True, "mode": body.mode, "note": note}
+
+
 @router.post("/proxy/select")
 async def proxy_select(body: NodeBody, services: Services = Depends(get_services)):
     return await services.proxy.select_node(body.name)

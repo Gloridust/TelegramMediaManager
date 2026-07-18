@@ -19,6 +19,8 @@ qr_login.png
 
 # Secrets / local config
 .env
+.env.recovered.bak
+*.recovered.bak
 
 # Editor / OS
 .DS_Store
