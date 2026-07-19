@@ -1,12 +1,14 @@
-"""Folder browser: navigate subfolders, create folders, choose the download dir.
+"""File manager: browse folders and files, create/rename/delete, download, and
+choose the download directory.
 
-All paths are constrained to the working root; traversal outside it is refused by
-the engine's ``_is_within_root`` guard.
+All paths are constrained to the working root; traversal outside it (or deleting
+the root itself) is refused by the engine guards.
 """
 
 import os
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from app.core.i18n import tr
@@ -25,11 +27,16 @@ class MkdirBody(BaseModel):
     name: str
 
 
+class RenameBody(BaseModel):
+    path: str
+    name: str
+
+
 class RootBody(BaseModel):
     path: str
 
 
-def _view(engine, target, names):
+def _view(engine, target, folders, files):
     return {
         "root": engine.root_path,
         "path": target,
@@ -39,15 +46,26 @@ def _view(engine, target, names):
         "current_rel": engine._rel(engine.current_dir),
         "is_current": os.path.realpath(target) == os.path.realpath(engine.current_dir),
         "parent": None if engine._is_root(target) else os.path.dirname(target),
-        "entries": [{"name": n, "path": os.path.join(target, n)} for n in names],
+        "folders": [{"name": n, "path": os.path.join(target, n)} for n in folders],
+        "files": [{"name": n, "path": os.path.join(target, n), "size": sz} for n, sz in files],
     }
 
 
 @router.get("")
 async def browse(path: str | None = None, services: Services = Depends(get_services)):
     engine = services.engine
-    target, names = engine.list_dir(path or engine.current_dir)
-    return _view(engine, target, names)
+    target, folders, files = engine.list_entries(path or engine.current_dir)
+    return _view(engine, target, folders, files)
+
+
+@router.get("/download")
+async def download(path: str, inline: bool = False, services: Services = Depends(get_services)):
+    engine = services.engine
+    p = engine.resolve_path(path, must_be="file")
+    if not p:
+        raise HTTPException(404, await tr(services.store, "file_not_found"))
+    return FileResponse(p, filename=os.path.basename(p),
+                        content_disposition_type="inline" if inline else "attachment")
 
 
 @router.post("/mkdir")
@@ -57,8 +75,27 @@ async def mkdir(body: MkdirBody, services: Services = Depends(get_services)):
     if not path:
         raise HTTPException(400, await tr(services.store, "invalid_folder"))
     await engine.set_current_dir(path)
-    target, names = engine.list_dir(path)
-    return _view(engine, target, names)
+    target, folders, files = engine.list_entries(path)
+    return _view(engine, target, folders, files)
+
+
+@router.post("/rename")
+async def rename(body: RenameBody, services: Services = Depends(get_services)):
+    engine = services.engine
+    if not engine.rename_path(body.path, body.name):
+        raise HTTPException(400, await tr(services.store, "rename_failed"))
+    return {"ok": True}
+
+
+@router.post("/delete")
+async def delete(body: PathBody, services: Services = Depends(get_services)):
+    engine = services.engine
+    if not engine.delete_path(body.path):
+        raise HTTPException(400, await tr(services.store, "delete_failed"))
+    # If the current download dir was deleted, fall back to the root.
+    if not os.path.isdir(engine.current_dir):
+        await engine.set_current_dir(engine.root_path)
+    return {"ok": True}
 
 
 @router.post("/set-current")

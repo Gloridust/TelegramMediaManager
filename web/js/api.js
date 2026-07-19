@@ -46,7 +46,10 @@ export const api = {
   concurrency: (v) => api.post("/api/downloads/concurrency", { value: v }),
 
   files: (path) => api.get("/api/files" + (path ? "?path=" + encodeURIComponent(path) : "")),
+  fileUrl: (path, inline) => "/api/files/download?path=" + encodeURIComponent(path) + (inline ? "&inline=1" : ""),
   mkdir: (b) => api.post("/api/files/mkdir", b),
+  renameFile: (b) => api.post("/api/files/rename", b),
+  deleteFile: (b) => api.post("/api/files/delete", b),
   setCurrent: (b) => api.post("/api/files/set-current", b),
   setRoot: (b) => api.post("/api/files/set-root", b),
 
