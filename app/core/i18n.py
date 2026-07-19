@@ -44,6 +44,9 @@ MESSAGES = {
     "invalid_folder": {"zh": "无效的文件夹名或非法路径", "en": "Invalid folder name or path"},
     "invalid_path": {"zh": "路径无效或超出工作根目录", "en": "Invalid path or outside the working root"},
     "invalid_path_detail": {"zh": "无效路径：{e}", "en": "Invalid path: {e}"},
+    "file_not_found": {"zh": "文件不存在", "en": "File not found"},
+    "delete_failed": {"zh": "删除失败（路径无效或受保护）", "en": "Delete failed (invalid or protected path)"},
+    "rename_failed": {"zh": "重命名失败（名称无效或已存在）", "en": "Rename failed (invalid name or already exists)"},
     # --- settings / proxy / bot ---
     "proxy_applied": {"zh": "代理已应用，用户端已按新设置重连。", "en": "Proxy applied; the user client reconnected with the new settings."},
     "saved_reconnect_failed": {"zh": "设置已保存，但重连失败：{e}", "en": "Saved, but reconnect failed: {e}"},

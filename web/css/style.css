@@ -206,6 +206,19 @@ button { font-family: inherit; cursor: pointer; }
 }
 .folder:hover { background: var(--accent-soft); }
 .folder .ico { font-size: 20px; }
+
+/* File manager rows */
+.fm-section { font-size: 12px; color: var(--text-secondary); margin: 14px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+.fm-row { display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: var(--radius-sm); }
+.fm-row:hover { background: var(--bg-secondary); }
+.fm-row .ico { font-size: 19px; flex-shrink: 0; }
+.fm-row .ico.open-dir, .fm-row .fm-name.open-dir { cursor: pointer; }
+.fm-row .fm-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: var(--text); text-decoration: none; }
+a.fm-name:hover { color: var(--accent); }
+.fm-row .fm-size { font-size: 12px; color: var(--text-secondary); flex-shrink: 0; }
+.icon-btn.tiny { width: 30px; height: 30px; font-size: 14px; flex-shrink: 0; }
+.icon-btn.tiny.danger { color: var(--danger); }
+.btn.tiny.secondary { text-decoration: none; }
 .chip {
   display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px;
   background: var(--accent-soft); color: var(--accent); font-size: 12.5px;

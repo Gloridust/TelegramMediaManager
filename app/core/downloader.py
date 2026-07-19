@@ -592,7 +592,7 @@ class DownloadEngine:
         await self.store.set_setting(Keys.CURRENT_DIR, new_path)
 
     def list_dir(self, path):
-        """List immediate subfolders of a directory (browser view)."""
+        """List immediate subfolders of a directory (bot folder navigation)."""
         target = os.path.realpath(path)
         if not self._is_within_root(target) or not os.path.isdir(target):
             target = self.root_path
@@ -603,6 +603,27 @@ class DownloadEngine:
             names = []
         return target, names
 
+    def list_entries(self, path):
+        """List subfolders and files of a directory (web file manager).
+        Returns (target, folders:[name], files:[(name, size)])."""
+        target = os.path.realpath(path)
+        if not self._is_within_root(target) or not os.path.isdir(target):
+            target = self.root_path
+        folders, files = [], []
+        try:
+            for name in sorted(os.listdir(target), key=str.lower):
+                full = os.path.join(target, name)
+                try:
+                    if os.path.isdir(full):
+                        folders.append(name)
+                    elif os.path.isfile(full):
+                        files.append((name, os.path.getsize(full)))
+                except OSError:
+                    continue
+        except OSError:
+            pass
+        return target, folders, files
+
     def make_dir(self, parent, name):
         safe = self._safe_subdir_name(name)
         if not safe:
@@ -612,6 +633,51 @@ class DownloadEngine:
             return None
         os.makedirs(path, exist_ok=True)
         return path
+
+    def resolve_path(self, path, must_be=None):
+        """Realpath a path only if it is inside the root. `must_be`: 'file'|'dir'|None."""
+        p = os.path.realpath(path)
+        if not self._is_within_root(p):
+            return None
+        if must_be == "file" and not os.path.isfile(p):
+            return None
+        if must_be == "dir" and not os.path.isdir(p):
+            return None
+        return p
+
+    def delete_path(self, path):
+        """Delete a file or folder. Never the root itself or anything outside it."""
+        import shutil
+        p = os.path.realpath(path)
+        if not self._is_within_root(p) or self._is_root(p):
+            return False
+        try:
+            if os.path.isdir(p):
+                shutil.rmtree(p)
+            elif os.path.isfile(p):
+                os.remove(p)
+            else:
+                return False
+        except OSError:
+            return False
+        return True
+
+    def rename_path(self, path, new_name):
+        """Rename a file/folder within its parent. Returns the new path or None."""
+        p = os.path.realpath(path)
+        if not self._is_within_root(p) or self._is_root(p):
+            return None
+        safe = self._safe_subdir_name(new_name)
+        if not safe:
+            return None
+        new_path = os.path.join(os.path.dirname(p), safe)
+        if os.path.exists(new_path):
+            return None
+        try:
+            os.rename(p, new_path)
+        except OSError:
+            return None
+        return new_path
 
     @property
     def active_count(self):

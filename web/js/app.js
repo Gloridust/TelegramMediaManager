@@ -440,18 +440,61 @@ function renderTasks(host, d) {
 }
 
 // ---------- Files ---------- //
+function fileIcon(name) {
+  const e = (name.split(".").pop() || "").toLowerCase();
+  if (["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "heic"].includes(e)) return "🖼";
+  if (["mp4", "mkv", "mov", "avi", "webm", "flv", "ts", "m4v"].includes(e)) return "🎬";
+  if (["mp3", "flac", "wav", "ogg", "m4a", "aac"].includes(e)) return "🎵";
+  if (["zip", "rar", "7z", "tar", "gz"].includes(e)) return "🗜";
+  if (["pdf"].includes(e)) return "📕";
+  if (["doc", "docx", "txt", "md", "rtf"].includes(e)) return "📄";
+  return "📄";
+}
+
 async function mountFiles(host) {
   let cur = null;
   async function load(path) {
     host.innerHTML = `<div class="empty"><span class="spin"></span></div>`;
-    cur = await api.files(path);
+    try { cur = await api.files(path); } catch (e) { host.innerHTML = `<p class="error-text">${esc(e.message)}</p>`; return; }
     render();
   }
+
+  async function del(path, name) {
+    if (!confirm(t("confirm_delete", { name }))) return;
+    try { await api.deleteFile({ path }); toast(t("deleted"), "ok"); load(cur.path); }
+    catch (e) { toast(e.message, "err"); }
+  }
+  async function rename(path, oldName) {
+    const name = prompt(t("rename_prompt"), oldName);
+    if (!name || name === oldName) return;
+    try { await api.renameFile({ path, name: name.trim() }); toast(t("renamed"), "ok"); load(cur.path); }
+    catch (e) { toast(e.message, "err"); }
+  }
+
   function render() {
     const parts = cur.rel === "/" ? [] : cur.rel.replace(/^\//, "").split("/");
     let acc = cur.root;
     const crumbs = [`<span class="crumb" data-path="${esc(cur.root)}">${t("root_home")}</span>`];
     parts.forEach((p) => { acc += "/" + p; crumbs.push(`<span>/</span><span class="crumb" data-path="${esc(acc)}">${esc(p)}</span>`); });
+
+    const folderRows = cur.folders.map((f) => `
+      <div class="fm-row">
+        <span class="ico open-dir" data-path="${esc(f.path)}" role="button">📁</span>
+        <span class="fm-name open-dir" data-path="${esc(f.path)}" role="button">${esc(f.name)}</span>
+        <button class="btn tiny secondary" data-set="${esc(f.path)}">${t("set_as_dir")}</button>
+        <button class="icon-btn tiny" data-ren="${esc(f.path)}" data-name="${esc(f.name)}" title="${t("rename")}">✏️</button>
+        <button class="icon-btn tiny danger" data-del="${esc(f.path)}" data-name="${esc(f.name)}" title="${t("delete")}">🗑</button>
+      </div>`).join("");
+
+    const fileRows = cur.files.map((f) => `
+      <div class="fm-row">
+        <span class="ico">${fileIcon(f.name)}</span>
+        <a class="fm-name" href="${api.fileUrl(f.path, true)}" target="_blank" rel="noopener" title="${t("open_file")}">${esc(f.name)}</a>
+        <span class="fm-size">${human(f.size)}</span>
+        <a class="btn tiny secondary" href="${api.fileUrl(f.path, false)}">${t("download_file")}</a>
+        <button class="icon-btn tiny" data-ren="${esc(f.path)}" data-name="${esc(f.name)}" title="${t("rename")}">✏️</button>
+        <button class="icon-btn tiny danger" data-del="${esc(f.path)}" data-name="${esc(f.name)}" title="${t("delete")}">🗑</button>
+      </div>`).join("");
 
     host.innerHTML = `
       <div class="panel">
@@ -463,14 +506,20 @@ async function mountFiles(host) {
           <button class="btn small" id="mk">${t("mk_set")}</button>
           ${cur.is_current ? "" : `<button class="btn small secondary" id="use">${t("set_as_dir")}</button>`}
         </div>
-        ${cur.entries.length
-          ? `<div class="folder-grid">${cur.entries.map((e) =>
-              `<div class="folder" data-path="${esc(e.path)}"><span class="ico">📁</span>${esc(e.name)}</div>`).join("")}</div>`
-          : `<div class="empty">${t("empty_folder")}</div>`}
+        ${cur.folders.length ? `<div class="fm-section">${t("folders_h")} · ${cur.folders.length}</div>${folderRows}` : ""}
+        ${cur.files.length ? `<div class="fm-section">${t("files_h")} · ${cur.files.length}</div>${fileRows}` : ""}
+        ${(!cur.folders.length && !cur.files.length) ? `<div class="empty">${t("empty_dir")}</div>` : ""}
       </div>`;
 
     host.querySelectorAll(".crumb").forEach((c) => c.addEventListener("click", () => load(c.dataset.path)));
-    host.querySelectorAll(".folder").forEach((f) => f.addEventListener("click", () => load(f.dataset.path)));
+    host.querySelectorAll(".open-dir").forEach((f) => f.addEventListener("click", () => load(f.dataset.path)));
+    host.querySelectorAll("[data-set]").forEach((b) => b.addEventListener("click", async () => {
+      try { await api.setCurrent({ path: b.dataset.set }); toast(t("set_dir_done"), "ok"); load(cur.path); }
+      catch (e) { toast(e.message, "err"); }
+    }));
+    host.querySelectorAll("[data-ren]").forEach((b) => b.addEventListener("click", () => rename(b.dataset.ren, b.dataset.name)));
+    host.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => del(b.dataset.del, b.dataset.name)));
+
     $("#mk").addEventListener("click", async () => {
       const name = $("#new-folder").value.trim();
       if (!name) return;
