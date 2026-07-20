@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] — 2026-07-19
+
+### Added
+- **File manager** — the web *Files* tab now lists files (with size and a type
+  icon) alongside folders, and can preview/open, download, rename, and delete
+  them (with confirmation). All operations stay confined to the working root.
+- **Bot folder browser** — the Telegram bot's reply keyboard gains a 目录 button
+  that opens an inline folder browser (enter subfolders, up, home, new folder,
+  set-as-download-dir), sharing the download directory with the panel.
+
+### Fixed
+- Pinned `python-socks` (`>=2.7,<3`): older versions raised *"too many values to
+  unpack (expected 5)"* when connecting through a proxy, because Telethon 1.35
+  passes a 6-element proxy tuple that they unpack into 5.
+
+
 ## [2.0.0] — 2026-07-19
 
 A ground-up rework from a single-file Telegram bot into a self-hosted app with a
