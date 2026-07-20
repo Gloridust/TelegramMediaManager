@@ -1,7 +1,9 @@
 // TelegramMediaManager — single-page panel controller.
-import { api } from "./api.js";
-import { $, esc, human, toast, initTheme, toggleTheme } from "./ui.js";
-import { t, getLang, setLang, LANGS } from "./i18n.js";
+// Absolute paths so the index.html import map can pin these to the versioned
+// URLs (e.g. /js/api.js?v=2.1.1) for cache-busting.
+import { api } from "/js/api.js";
+import { $, esc, human, toast, initTheme, toggleTheme } from "/js/ui.js";
+import { t, getLang, setLang, LANGS } from "/js/i18n.js";
 
 const app = $("#app");
 const state = { view: "dashboard", tg: null, ws: null, live: {}, viewCtl: null };

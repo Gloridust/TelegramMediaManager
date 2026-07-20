@@ -6,13 +6,24 @@
   <meta name="theme-color" content="#17212b" />
   <title>Telegram Media Manager</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%233390ec'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white'%3E%E2%AC%87%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/style.css?v=__V__" />
+  <!-- Version the submodules so a new release busts the cache; unchanged
+       versions are served from the browser's long-lived cache (0 requests). -->
+  <script type="importmap">
+  {
+    "imports": {
+      "/js/api.js": "/js/api.js?v=__V__",
+      "/js/ui.js": "/js/ui.js?v=__V__",
+      "/js/i18n.js": "/js/i18n.js?v=__V__"
+    }
+  }
+  </script>
 </head>
 <body>
   <div id="app">
     <div class="center-wrap"><span class="spin"></span></div>
   </div>
   <div class="toasts" id="toasts"></div>
-  <script type="module" src="/js/app.js"></script>
+  <script type="module" src="/js/app.js?v=__V__"></script>
 </body>
 </html>

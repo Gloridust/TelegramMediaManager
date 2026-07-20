@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [2.1.1] — 2026-07-21
+
+### Fixed
+- Upgrades no longer need a hard refresh, **without** the per-request revalidation
+  overhead: static assets are versioned (`?v=<version>`) and cached long-term, so
+  a new release busts the cache automatically while unchanged assets load from
+  cache with **zero** requests — only the small `index.html` is revalidated each
+  load.
+
+
 ## [2.1.0] — 2026-07-19
 
 ### Added
