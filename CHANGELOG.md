@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] — 2026-07-21
+
+### Added
+- **In-page media preview** — clicking an image or video in the *Files* tab now
+  opens it in a lightbox (← → to navigate between media in the folder, Esc or a
+  backdrop click to close) instead of opening a new tab. Other file types still
+  open/download as before.
+
+### Changed
+- The `docker-compose.yml` now defaults to the **GHCR** image (public), so
+  `docker compose pull` works out of the box. Docker Hub remains available when
+  its publishing secrets are configured.
+
+
 ## [2.1.1] — 2026-07-21
 
 ### Fixed
