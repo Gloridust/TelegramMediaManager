@@ -42,6 +42,17 @@ def create_app() -> FastAPI:
     async def health():
         return {"status": "ok", "version": __version__}
 
+    # Make the browser revalidate the SPA assets so an upgrade never leaves a
+    # stale app.js talking to a new backend (StaticFiles still answers 304 when
+    # unchanged, so this is cheap).
+    @app.middleware("http")
+    async def _no_stale_assets(request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if path == "/" or path.endswith((".js", ".css", ".html")):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
     # SPA + assets. html=True serves index.html at "/".
     if os.path.isdir(WEB_DIR):
         app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
