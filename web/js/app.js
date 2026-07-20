@@ -472,6 +472,8 @@ async function mountFiles(host) {
   }
 
   function render() {
+    cur.folders = cur.folders || [];   // defensive: never hang on a shape mismatch
+    cur.files = cur.files || [];
     const parts = cur.rel === "/" ? [] : cur.rel.replace(/^\//, "").split("/");
     let acc = cur.root;
     const crumbs = [`<span class="crumb" data-path="${esc(cur.root)}">${t("root_home")}</span>`];
