@@ -453,6 +453,47 @@ function fileIcon(name) {
   return "📄";
 }
 
+// Which files can be previewed in-page (browser-playable formats).
+function previewType(name) {
+  const e = (name.split(".").pop() || "").toLowerCase();
+  if (["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "avif"].includes(e)) return "image";
+  if (["mp4", "webm", "ogg", "mov", "m4v"].includes(e)) return "video";
+  return null;
+}
+
+// In-page lightbox for images/videos, with ← → navigation and Esc/backdrop close.
+function openLightbox(items, index) {
+  let i = index;
+  const box = document.createElement("div");
+  box.className = "lightbox";
+  const close = () => { document.removeEventListener("keydown", onKey); box.remove(); };
+  const step = (d) => { i = (i + d + items.length) % items.length; render(); };
+  const onKey = (e) => {
+    if (e.key === "Escape") close();
+    else if (e.key === "ArrowLeft" && items.length > 1) step(-1);
+    else if (e.key === "ArrowRight" && items.length > 1) step(1);
+  };
+  function render() {
+    const it = items[i];
+    const media = it.type === "video"
+      ? `<video src="${it.url}" controls autoplay playsinline></video>`
+      : `<img src="${it.url}" alt="${esc(it.name)}">`;
+    box.innerHTML = `
+      <span class="lb-close" role="button" title="Esc">✕</span>
+      ${items.length > 1 ? '<span class="lb-nav lb-prev" role="button">‹</span><span class="lb-nav lb-next" role="button">›</span>' : ""}
+      <div class="lightbox-content">${media}</div>
+      <div class="lb-caption">${esc(it.name)}${items.length > 1 ? ` · ${i + 1}/${items.length}` : ""}</div>`;
+    box.querySelector(".lb-close").onclick = close;
+    const p = box.querySelector(".lb-prev"), n = box.querySelector(".lb-next");
+    if (p) p.onclick = (e) => { e.stopPropagation(); step(-1); };
+    if (n) n.onclick = (e) => { e.stopPropagation(); step(1); };
+  }
+  box.addEventListener("click", (e) => { if (e.target === box) close(); });
+  document.addEventListener("keydown", onKey);
+  render();
+  document.body.appendChild(box);
+}
+
 async function mountFiles(host) {
   let cur = null;
   async function load(path) {
@@ -490,15 +531,27 @@ async function mountFiles(host) {
         <button class="icon-btn tiny danger" data-del="${esc(f.path)}" data-name="${esc(f.name)}" title="${t("delete")}">🗑</button>
       </div>`).join("");
 
-    const fileRows = cur.files.map((f) => `
+    // Build the previewable set (images/videos) for the lightbox + its nav.
+    const pidx = {}, previewItems = [];
+    cur.files.forEach((f) => {
+      const ty = previewType(f.name);
+      if (ty) { pidx[f.path] = previewItems.length; previewItems.push({ name: f.name, url: api.fileUrl(f.path, true), type: ty }); }
+    });
+    const fileRows = cur.files.map((f) => {
+      const canPreview = pidx[f.path] !== undefined;
+      const nameEl = canPreview
+        ? `<span class="fm-name preview" data-pidx="${pidx[f.path]}" role="button" title="${t("preview")}">${esc(f.name)}</span>`
+        : `<a class="fm-name" href="${api.fileUrl(f.path, true)}" target="_blank" rel="noopener" title="${t("open_file")}">${esc(f.name)}</a>`;
+      return `
       <div class="fm-row">
         <span class="ico">${fileIcon(f.name)}</span>
-        <a class="fm-name" href="${api.fileUrl(f.path, true)}" target="_blank" rel="noopener" title="${t("open_file")}">${esc(f.name)}</a>
+        ${nameEl}
         <span class="fm-size">${human(f.size)}</span>
         <a class="btn tiny secondary" href="${api.fileUrl(f.path, false)}">${t("download_file")}</a>
         <button class="icon-btn tiny" data-ren="${esc(f.path)}" data-name="${esc(f.name)}" title="${t("rename")}">✏️</button>
         <button class="icon-btn tiny danger" data-del="${esc(f.path)}" data-name="${esc(f.name)}" title="${t("delete")}">🗑</button>
-      </div>`).join("");
+      </div>`;
+    }).join("");
 
     host.innerHTML = `
       <div class="panel">
@@ -517,6 +570,8 @@ async function mountFiles(host) {
 
     host.querySelectorAll(".crumb").forEach((c) => c.addEventListener("click", () => load(c.dataset.path)));
     host.querySelectorAll(".open-dir").forEach((f) => f.addEventListener("click", () => load(f.dataset.path)));
+    host.querySelectorAll(".fm-name.preview").forEach((el) =>
+      el.addEventListener("click", () => openLightbox(previewItems, parseInt(el.dataset.pidx))));
     host.querySelectorAll("[data-set]").forEach((b) => b.addEventListener("click", async () => {
       try { await api.setCurrent({ path: b.dataset.set }); toast(t("set_dir_done"), "ok"); load(cur.path); }
       catch (e) { toast(e.message, "err"); }
