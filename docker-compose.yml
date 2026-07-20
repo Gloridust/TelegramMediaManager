@@ -12,11 +12,15 @@ services:
   app:
     image: gloridust/telegrammediamanager:latest
     # Also on GHCR: ghcr.io/gloridust/telegrammediamanager:latest
-    # To build locally instead of pulling, comment out `image:` above and
-    # uncomment the block below:
-    # build:
-    #   context: .
-    #   dockerfile: docker/Dockerfile
+    #
+    # Deploy (pull the published image):
+    #   docker compose pull
+    #   docker compose up -d
+    #
+    # Build from source instead (this service has no `build:` section on purpose,
+    # so `up` stays pull-only for end users — use `docker build` directly):
+    #   docker build -f docker/Dockerfile -t gloridust/telegrammediamanager:latest .
+    #   docker compose up -d
     container_name: tmm
     restart: unless-stopped
     ports:
